@@ -1,0 +1,14 @@
+﻿Network Name,IP Address,NetBIOS name,NetBIOS type,NetBIOS status
+VMware Network Adapter VMnet1,192.168.199.1,DESKTOP-79R85GD<00>,UNIQUE,registration
+VMware Network Adapter VMnet1,192.168.199.1,<00>,GROUP,registration
+VMware Network Adapter VMnet1,192.168.199.1,DESKTOP-79R85GD<20>,UNIQUE,registration
+VMware Network Adapter VMnet8,192.168.254.1,DESKTOP-79R85GD<00>,UNIQUE,registration
+VMware Network Adapter VMnet8,192.168.254.1,<00>,GROUP,registration
+VMware Network Adapter VMnet8,192.168.254.1,DESKTOP-79R85GD<20>,UNIQUE,registration
+이더넷,192.168.1.100,DESKTOP-79R85GD<00>,UNIQUE,registration
+이더넷,192.168.1.100,<00>,GROUP,registration
+이더넷,192.168.1.100,DESKTOP-79R85GD<20>,UNIQUE,registration
+Bluetooth 네트워크 연결 4,0.0.0.0,,,
+Wi-Fi,0.0.0.0,,,
+로컬 영역 연결* 1,0.0.0.0,,,
+로컬 영역 연결* 2,0.0.0.0,,,

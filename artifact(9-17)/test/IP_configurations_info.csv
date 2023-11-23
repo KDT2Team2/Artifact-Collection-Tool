@@ -1,0 +1,5 @@
+﻿Interface,IP Address,Netmask,Broadcast Address
+이더넷,192.168.1.100,255.255.255.0,
+VMware Network Adapter VMnet1,192.168.199.1,255.255.255.0,
+VMware Network Adapter VMnet8,192.168.254.1,255.255.255.0,
+Loopback Pseudo-Interface 1,127.0.0.1,255.0.0.0,

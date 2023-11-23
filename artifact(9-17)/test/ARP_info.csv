@@ -1,0 +1,27 @@
+﻿IP Address,Physical Address,Type
+192.168.1.101,d8-bb-c1-90-ae-ec,dynamic
+192.168.1.254,58-d9-d5-04-c4-f8,dynamic
+192.168.1.255,ff-ff-ff-ff-ff-ff,static
+224.0.0.2,01-00-5e-00-00-02,static
+224.0.0.22,01-00-5e-00-00-16,static
+224.0.0.251,01-00-5e-00-00-fb,static
+224.0.0.252,01-00-5e-00-00-fc,static
+239.255.102.18,01-00-5e-7f-66-12,static
+239.255.255.250,01-00-5e-7f-ff-fa,static
+255.255.255.255,ff-ff-ff-ff-ff-ff,static
+192.168.199.254,00-50-56-e5-be-fc,dynamic
+192.168.199.255,ff-ff-ff-ff-ff-ff,static
+224.0.0.2,01-00-5e-00-00-02,static
+224.0.0.22,01-00-5e-00-00-16,static
+224.0.0.251,01-00-5e-00-00-fb,static
+224.0.0.252,01-00-5e-00-00-fc,static
+239.255.255.250,01-00-5e-7f-ff-fa,static
+255.255.255.255,ff-ff-ff-ff-ff-ff,static
+192.168.254.254,00-50-56-e3-3f-64,dynamic
+192.168.254.255,ff-ff-ff-ff-ff-ff,static
+224.0.0.2,01-00-5e-00-00-02,static
+224.0.0.22,01-00-5e-00-00-16,static
+224.0.0.251,01-00-5e-00-00-fb,static
+224.0.0.252,01-00-5e-00-00-fc,static
+239.255.255.250,01-00-5e-7f-ff-fa,static
+255.255.255.255,ff-ff-ff-ff-ff-ff,static
