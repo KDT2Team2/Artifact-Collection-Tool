@@ -15,9 +15,11 @@ import win32com.client
 import hashlib
 import psutil
 from datetime import datetime
+import time
 
 global canvas
 output_directory = ""
+status_window = None
 
 # 사용자 지정 경로 설정 함수
 def browse_output_directory():
@@ -345,12 +347,129 @@ artifact_functions = {
     "최근 LNK 파일" : lnk_files_func
 }
 
+
+# == 진행 상태 창 ============================================================================================================================
+def open_status_window():
+    global status_window
+    status_window = tk.Toplevel(app)
+    status_window.title("진행 상태")
+    status_window.geometry("300x100")
+    app.resizable(False, False)
+    status_label = tk.Label(status_window, text="작업 시작", font=("Arial", 12))
+    status_label.pack(pady=10)
+
+    # 종료 버튼 함수
+    def on_exit():
+        app.quit()
+
+    # 결과보기 버튼 함수
+    def show_results():
+        for widget in app.winfo_children():
+            widget.destroy()
+
+        scrollable_frame = create_scrollable_frame(app)
+
+        # 결과 표시 로직
+        for file_name in os.listdir(output_directory):
+            if file_name.endswith(".csv"):
+                file_path = os.path.join(output_directory, file_name)
+                data = read_csv(file_path)
+                label = tk.Label(scrollable_frame, text=file_name, font=("Arial", 12))
+                label.pack()
+                show_csv_in_treeview(scrollable_frame, data)
+
+    # 종료 버튼 추가
+    exit_button = tk.Button(status_window, text="종료", command=on_exit, state='disabled')
+    exit_button.pack(side="left", padx=10, pady=10)
+
+    # 결과보기 버튼 추가
+    result_button = tk.Button(status_window, text="결과보기", command=show_results, state='disabled')
+    result_button.pack(side="right", padx=10, pady=10)
+
+    def update_status(message):
+        status_label.config(text=message)
+        status_window.update()
+        if message == "모든 작업 완료.":
+            exit_button.config(state='normal')
+            result_button.config(state='normal')
+
+    return update_status
+
+
+
+
+def read_csv(file_path):
+    data = []
+    with open(file_path, newline='', encoding='utf-8-sig') as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            data.append(row)
+    return data
+
+
+def show_csv_in_treeview(parent, data):
+    if not data:
+        return
+    
+    frame = tk.Frame(parent)
+    frame.pack(expand=True, fill="both")
+
+    tree = ttk.Treeview(frame, columns=data[0], show="headings")
+    tree.pack(side="left", expand=True, fill="both")
+
+    # 스크롤바 추가
+    scrollbar = tk.Scrollbar(frame, orient="vertical", command=tree.yview)
+    scrollbar.pack(side="right", fill="y")
+    tree.configure(yscrollcommand=scrollbar.set)
+
+    for col in data[0]:
+        tree.column(col, width=100, anchor="center")
+        tree.heading(col, text=col)
+
+    for row in data[1:]:
+        tree.insert("", "end", values=row)
+
+
+
+
+def create_scrollable_frame(parent):
+    canvas = tk.Canvas(parent)
+    canvas.pack(side="left", fill="both", expand=True)
+
+    scrollbar = tk.Scrollbar(parent, orient="vertical", command=canvas.yview)
+    scrollbar.pack(side="right", fill="y")
+
+    scrollable_frame = tk.Frame(canvas)
+    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+
+    def on_frame_configure(event):
+        canvas.configure(scrollregion=canvas.bbox("all"))
+
+    def on_mousewheel(event):
+        canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
+    scrollable_frame.bind("<Configure>", on_frame_configure)
+    canvas.bind_all("<MouseWheel>", on_mousewheel)
+
+    canvas.configure(yscrollcommand=scrollbar.set)
+
+    return scrollable_frame
+
+
+# == 메인 창 =================================================================================================================================
 def execute_and_save_artifacts():
+    global status_window
+    update_status = open_status_window()  # 상태 업데이트 창 열기
     for artifact, var in variables.items():
         if var.get():
             func = artifact_functions.get(artifact)
             if func:
-                func(output_directory)
+                update_status(f"{artifact} 작업 시작")  # 상태 업데이트
+                func(output_directory)  # 아티팩트 함수 실행
+                update_status(f"{artifact} 작업 완료")  # 상태 업데이트
+
+    update_status("모든 작업 완료.")  # 모든 작업 완료 상태 업데이트
+
 
 def browse_output_directory():
     global output_directory
@@ -364,6 +483,7 @@ app = tk.Tk()
 app.title('데이터 수집 도구')
 app.geometry("800x600")
 app['bg'] = '#f0f0f0'
+app.resizable(False, False)
 
 style = ttk.Style()
 style.theme_use('clam')
