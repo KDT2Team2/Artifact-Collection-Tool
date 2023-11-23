@@ -1,87 +1,322 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext
+import csv
+import os
+import tkinter
+import socket
+import psutil
+import win32evtlog
+import win32evtlogutil
+import win32gui
+import re
+from scapy.all import *
+import pythoncom
+import win32com.client
+import hashlib
+import psutil
+from datetime import datetime
 
 global canvas
+output_directory = ""
 
-# == 아티팩트 함수 ==========================================================================================================================
-def memory_dump_func():
-    return ["항목1", "항목2", "항목3"]
+# 사용자 지정 경로 설정 함수
+def browse_output_directory():
+    global output_directory
+    directory = filedialog.askdirectory()
+    if directory:
+        output_entry.delete(0, tk.END)
+        output_entry.insert(0, directory)
+        output_directory = directory
 
-def prefetch_func():
-    return ["1", "2"]
-
-def NTFS_func():
-    return []
-
-def sys_info_func():
-    return []
-
-def regi_hive():
-    return ["1232"]
-
-def event_viewer_log_func():
-    return 1
-
-def enviornment_func():
-    return 1
-
-def patch_list_func():
-    return 1
-
-def process_list_info_func():
-    return 1
-
-def connection_info_func():
-    return 1
-
-def ip_setting_info_func():
-    return 1
-
-def ARP_info_func():
-    return 1
-
-def NetBIOS_info_func():
-    return 1
-
-def open_handle_info_func():
-    return 1
-
-def work_schedule_info_func():
-    return 1
-
-def sys_logon_info_func():
-    return 1
-
-def regi_service_info_func():
-    return 1
-
-def recent_act_info_func():
-    return 1
-
-def userassist_func():
-    return 1
-
-def autorun_func():
-    return 1
-
-def registry_func():
-    return 1
-
-def browser_info_func():
-    return 1
-
-def bin_func():
-    return 1
-
-def powershell_log_func():
-    return 1
-
-def lnk_files_func():
-    return 1
-
+# 체크된 아티팩트 실행 및 CSV 파일 저장 함수
+def execute_and_save_artifacts():
+    for artifact, var in variables.items():
+        if var.get():
+            func = artifact_functions.get(artifact)
+            if func:
+                func(output_directory)
 
 
 # == 아티팩트 함수 ==========================================================================================================================
+def memory_dump_func(output_directory):
+    return 1
+
+def prefetch_func(output_directory):
+    return 1
+
+def NTFS_func(output_directory):
+    return 1
+
+def sys_info_func(output_directory):
+    return 1
+
+def regi_hive(output_directory):
+    return 1
+
+def event_viewer_log_func(output_directory):
+    return 1
+
+def enviornment_func(output_directory):
+    return 1
+
+def patch_list_func(output_directory):
+    update_session = win32com.client.Dispatch("Microsoft.Update.Session")
+    update_searcher = update_session.CreateUpdateSearcher()
+
+    history_count = update_searcher.GetTotalHistoryCount()
+    updates = update_searcher.QueryHistory(0, history_count)
+
+    with open(os.path.join(output_directory, 'Patch_List.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Title', 'Update ID', 'Version', 'Date'])
+
+        for update in updates:
+            title = update.Title
+
+            # KB 번호와 버전을 추출하기 위한 정규 표현식
+            kb_pattern = r"KB\d+"
+            version_pattern = r"\(버전\s([\d.]+)\)"
+
+            # 정규 표현식으로 KB 번호와 버전 찾기
+            kb_match = re.search(kb_pattern, title)
+            version_match = re.search(version_pattern, title)
+
+            kb_number = kb_match.group(0) if kb_match else "KB 정보 없음"
+            version = version_match.group(1) if version_match else "버전 정보 없음"
+
+            # title에서 KB 정보 이전까지만 추출
+            title_only = title.split(" - ")[0] if " - " in title else title
+
+            writer.writerow([title_only, kb_number, version, str(update.Date)])
+
+def process_list_info_func(output_directory):
+    with open(os.path.join(output_directory, 'Processes_List.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Process ID', 'Process name', 'Process path', 'Process creat time', 'Process access time', 'Process modify time', 'Process size', 'hash value(sha-256)'])
+
+        for proc in psutil.process_iter(['pid', 'name', 'exe']):
+            process_info = proc.info
+            file_path = process_info.get("exe")
+            if file_path and os.path.isfile(file_path):
+                # MAC 타임스탬프
+                creation_time = os.path.getctime(file_path)
+                access_time = os.path.getatime(file_path)
+                modification_time = os.path.getmtime(file_path)
+                
+                # 파일 크기
+                file_size = os.path.getsize(file_path)
+
+                # 해시값 계산
+                hash_md5 = hashlib.sha256()
+                with open(file_path, 'rb') as f:
+                    for chunk in iter(lambda: f.read(4096), b""):
+                        hash_md5.update(chunk)
+                hash_value = hash_md5.hexdigest()
+
+                writer.writerow([
+                    process_info['pid'],
+                    process_info['name'],
+                    file_path,
+                    datetime.fromtimestamp(creation_time).strftime('%Y-%m-%d %H:%M:%S'),
+                    datetime.fromtimestamp(access_time).strftime('%Y-%m-%d %H:%M:%S'),
+                    datetime.fromtimestamp(modification_time).strftime('%Y-%m-%d %H:%M:%S'),
+                    file_size,
+                    hash_value
+                ])
+            else:
+                process = psutil.Process(process_info['pid'])
+                writer.writerow([
+                    process.pid,
+                    process.name(),
+                    'N/A',
+                    datetime.fromtimestamp(process.create_time()).strftime('%Y-%m-%d %H:%M:%S'),
+                    'N/A',
+                    'N/A',
+                    'N/A',
+                    'N/A'
+                ])
+
+def connection_info_func(output_directory):
+    host_name = socket.gethostname()
+
+    with open(os.path.join(output_directory, 'Open_Port_List.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Port Number'])
+
+        ports = range(1, 65535)
+        
+        packets = [IP(dst=host_name)/TCP(dport=port, flags="S") for port in ports]
+        responses, _ = sr(packets, timeout=1, verbose=0)
+
+        for sent, received in responses:
+            if received.haslayer(TCP) and received[TCP].flags == 18:
+                writer.writerow([sent[TCP].dport])
+
+def ip_setting_info_func(output_directory):
+    with open(os.path.join(output_directory, 'IP_configurations_info.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Interface', 'IP Address', 'Netmask', 'Broadcast Address'])
+        
+        net_if_stats = psutil.net_if_stats()
+        
+        for interface, stats in net_if_stats.items():
+            if stats.isup:
+                addresses = psutil.net_if_addrs().get(interface, [])
+                for address in addresses:
+                    if address.family == socket.AF_INET:
+                        writer.writerow([
+                            interface, 
+                            address.address, 
+                            address.netmask, 
+                            address.broadcast
+                        ])
+
+def ARP_info_func(output_directory):
+    arp_table = os.popen('arp -a').read()
+
+    with open(os.path.join(output_directory, 'ARP_info.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+        writer = csv.writer(file)
+        # CSV 헤더
+        writer.writerow(['IP Address', 'Physical Address', 'Type'])
+
+        # 활성화된 ARP 테이블에 대한 정보
+        lines = arp_table.split('\n')
+        for line in lines:
+            if line.strip() and 'internet address' not in line.lower():
+                parts = line.split()
+                if len(parts) == 3:
+                    type_value = 'static' if parts[2] == '정적' else 'dynamic' if parts[2] == '동적' else parts[2]
+                    writer.writerow([parts[0], parts[1], type_value])
+
+def NetBIOS_info_func(output_directory):
+    with open(os.path.join(output_directory, 'NetBIOS_info.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Network Name', 'IP Address', 'NetBIOS name', 'NetBIOS type', 'NetBIOS status'])
+
+        result = os.popen('nbtstat -n').read()
+        ethernet_tables = re.split(r'([^\n]*):\n노드', result, flags=re.DOTALL)[1:]
+        ip_pattern = r'IpAddress: \[([\d.]+)\] 범위 ID: \[\]'
+        netbios_pattern = r'(\S+)\s+([A-Z]+)\s+(\S+)'
+
+        for i in range(0, len(ethernet_tables), 2):
+            adapter_name = ethernet_tables[i].strip()
+            ethernet_table = ethernet_tables[i + 1]
+
+            ip_match = re.search(ip_pattern, ethernet_table, re.DOTALL)
+            if ip_match:
+                ip_address = ip_match.group(1)
+
+            netbios_matches = re.findall(netbios_pattern, ethernet_table)
+            if netbios_matches:
+                for match in netbios_matches:
+                    name, netbios_type, status = match
+                    status = 'registration' if status == '등록됨' else 'collision' if status == '충돌' else status
+
+                    writer.writerow([adapter_name, ip_address, name, netbios_type, status])
+            else:
+                    writer.writerow([adapter_name, ip_address, None, None, None])
+
+def open_handle_info_func(output_directory):
+    def callback(_hwnd, _result: list):
+        title = win32gui.GetWindowText(_hwnd)
+        if win32gui.IsWindowEnabled(_hwnd) and win32gui.IsWindowVisible(_hwnd) and title and len(title) > 0:
+            _result.append(_hwnd)
+        return True
+
+    result = []
+    win32gui.EnumWindows(callback, result)
+
+    with open(os.path.join(output_directory, 'Window(handler)_info.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Window Number', 'Window Title', 'Window Class', 'Visible'])
+
+        for _hwnd in result:
+            writer.writerow([
+                _hwnd, 
+                win32gui.GetWindowText(_hwnd),
+                win32gui.GetClassName(_hwnd),
+                win32gui.IsWindowVisible(_hwnd)
+            ])
+
+def work_schedule_info_func(output_directory):
+    with open(os.path.join(output_directory, 'Scheduled_Task_List.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+        writer = csv.writer(file)
+        writer.writerow(["Task name", "Last run Time", "Next run Time", "Enabled", "Trigger Count", "Action Count"])
+
+        scheduler = win32com.client.Dispatch("Schedule.Service")
+        scheduler.Connect()
+        folders = [scheduler.GetFolder("\\")]
+
+        while folders:
+            folder = folders.pop(0)
+            folders += list(folder.GetFolders(0))
+            tasks = list(folder.GetTasks(0))
+
+            for task in tasks:
+                settings = task.Definition.Settings
+                triggers = task.Definition.Triggers
+                actions = task.Definition.Actions
+
+                writer.writerow({task.Name,task.LastRunTime,task.NextRunTime,task.Enabled,triggers.Count,actions.Count})
+
+def sys_logon_info_func(query, output_directory):
+    server = 'localhost'
+    log_type = ['Application', 'System', 'Security', 'Setup', 'Forwarded Events']
+
+    with open(os.path.join(output_directory, 'Event_log_List.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Log Type', 'Event ID', 'Source', 'Time Generated', 'Time Written', 'Event Category', 'Event Type'])
+
+        for logtype in log_type:
+            hand = win32evtlog.OpenEventLog(server, logtype)
+            flags = win32evtlog.EVENTLOG_BACKWARDS_READ | win32evtlog.EVENTLOG_SEQUENTIAL_READ
+            
+            events = win32evtlog.ReadEventLog(hand, flags, 0)
+            while events:
+                for event in events:
+                    if query in win32evtlogutil.SafeFormatMessage(event, logtype):
+                        writer.writerow([
+                            logtype,
+                            event.EventID,
+                            event.SourceName,
+                            event.TimeGenerated,
+                            event.TimeWritten,
+                            event.EventCategory,
+                            event.EventType
+                        ])
+                events = win32evtlog.ReadEventLog(hand, flags, 0)
+
+def regi_service_info_func(output_directory):
+    return 1
+
+def recent_act_info_func(output_directory):
+    return 1
+
+def userassist_func(output_directory):
+    return 1
+
+def autorun_func(output_directory):
+    return 1
+
+def registry_func(output_directory):
+    return 1
+
+def browser_info_func(output_directory):
+    return 1
+
+def bin_func(output_directory):
+    return 1
+
+def powershell_log_func(output_directory):
+    return 1
+
+def lnk_files_func(output_directory):
+    return 1
+
+
+# == 아티팩트 함수 ==========================================================================================================================
+
+
 artifact_functions = {
     "메모리 덤프": memory_dump_func,
     "Prefetch" : prefetch_func,
@@ -110,121 +345,43 @@ artifact_functions = {
     "최근 LNK 파일" : lnk_files_func
 }
 
+def execute_and_save_artifacts():
+    for artifact, var in variables.items():
+        if var.get():
+            func = artifact_functions.get(artifact)
+            if func:
+                func(output_directory)
 
-
-
-
-# 결과 프레임 설정
-def create_result_frame(parent, title, items):
-    frame = tk.Frame(parent, relief='solid', borderwidth=2, background='white')
-    title_label = tk.Label(frame, text=title, font=('Arial', 10), background='#D6D5CB', anchor='w')
-    title_label.pack(side='top', fill='x', padx=5, pady=5)
-    
-    if not isinstance(items, list):
-        items = [items]
-    for item in items:
-        item_label = tk.Label(frame, text=item, background='white')
-        item_label.pack(side='top', anchor='w', padx=5, pady=2)
-    
-    return frame
-
-
-# 결과 창 스크롤 마우스 휠 연동
-def on_mousewheel(event):
-    global canvas
-    canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-
-
-
-def start_capture():
-    global case_ref_label, case_ref_entry, options_frame, output_label, output_entry, browse_button, start_button, artifact_label, canvas
-    # 기존 위젯 숨기기
-    case_label.grid_forget()
-    case_ref_entry.grid_forget()
-    options_frame.grid_forget()
-    output_label.grid_forget()
-    output_entry.grid_forget()
-    browse_button.grid_forget()
-    start_button.grid_forget()
-    artifact_label.grid_forget()
-
-
-
-    case_ref = case_ref_entry.get()
-
-    # 스크롤 가능한 프레임
-    canvas = tk.Canvas(app, borderwidth=0, background="#ffffff", height=600, width=780)
-    scrollbar = tk.Scrollbar(app, orient="vertical", command=canvas.yview)
-    canvas.configure(yscrollcommand=scrollbar.set)
-    scrollbar.grid(row=0, column=1, sticky='ns')
-    canvas.grid(row=0, column=0, sticky="nsew")
-    canvas.bind_all("<MouseWheel>", on_mousewheel)
-
-
-    # 캔버스 안에 결과 프레임 배치
-    result_container = tk.Frame(canvas, background='white')
-    canvas.create_window((0, 0), window=result_container, anchor="nw")
-    result_container.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-
-
-    case_ref_label = tk.Label(result_container, text="케이스 참조: {}".format(case_ref), font=('Arial', 12), background='white', anchor='w')
-    case_ref_label.pack(side='top', fill='x', padx=5, pady=5)
-
-    # 체크된 아티팩트에 대응하는 함수 호출
-    for option in options:
-        if variables[option].get() and option in artifact_functions:
-            function = artifact_functions[option]
-            result_items = function()
-            frame = create_result_frame(result_container, option, result_items)
-            frame.pack(side='top', fill='x', padx=5, pady=5)
-
-
-
-
-
-
-# == 시작 페이지 ==================================================================================================================================
-
-
-# 파일 위치 찾아보기 함수
 def browse_output_directory():
+    global output_directory
     directory = filedialog.askdirectory()
     if directory:
         output_entry.delete(0, tk.END)
         output_entry.insert(0, directory)
+        output_directory = directory
 
-
-# UI 창 구성 / 스타일
 app = tk.Tk()
 app.title('데이터 수집 도구')
 app.geometry("800x600")
-app.resizable(False, False)
 app['bg'] = '#f0f0f0'
+
 style = ttk.Style()
 style.theme_use('clam')
 
-
-
 # 사례 참조 섹션
-case_label = ttk.Label(app, text="케이스 번호 / 참조:", background='#f0f0f0')
-case_label.grid(row=0, column=0, padx=5, pady=10)
+case_ref_label = ttk.Label(app, text="케이스 번호 / 참조:", background='#f0f0f0')
+case_ref_label.grid(row=0, column=0, padx=5, pady=5)
 case_ref_entry = ttk.Entry(app)
-case_ref_entry.grid(row=0, column=1, padx=5, pady=10, columnspan=2, sticky='ew')
+case_ref_entry.grid(row=0, column=1, padx=5, pady=5, columnspan=2, sticky='ew')  # 'ew'는 동서(east-west)를 의미하여 가로로 채워짐을 의미합니다.
 
+# 탐지할 아티팩트 선택 라벨
+artifact_label = ttk.Label(app, text="탐지할 아티팩트 선택", background='#f0f0f0', font=('Arial', 10))
+artifact_label.grid(row=1, column=0, columnspan=1, padx=5, pady=5)
 
 # 수집 옵션 섹션
-artifact_label = ttk.Label(app, text="탐지할 아티팩트 선택", background='#f0f0f0', font=('Arial', 10))
-artifact_label.grid(row=1, column=0, columnspan=1, padx=5, pady=(50, 1))
 options_frame = ttk.Frame(app, relief='solid', borderwidth=2)
-options_frame.grid(row=2, column=0, columnspan=3, padx=10, pady=1, sticky='ew')
+options_frame.grid(row=2, column=0, columnspan=3, padx=10, pady=5, sticky='ew')
 
-
-# 모두 선택 함수
-def select_all():
-    for option in options:
-        variables[option].set(select_all_var.get())
-
-# 각 체크박스와 변수 초기화
 checkbuttons = {}
 variables = {}
 options = [
@@ -264,34 +421,19 @@ for i, option in enumerate(options):
 for i in range(5):
     options_frame.grid_columnconfigure(i, weight=1)
 
-# 모두 선택 기능
-select_all_var = tk.BooleanVar()
-select_all_checkbox = ttk.Checkbutton(options_frame, text="모두 선택", variable=select_all_var, command=select_all)
-select_all_checkbox.grid(row=100, column=4, padx=3, pady=2, sticky='e')
-
-
-
-# 출력 저장 위치 설정
+# 출력 섹션
 output_label = ttk.Label(app, text="출력 저장 위치:", background='#f0f0f0')
-output_label.grid(row=1000, column=0, padx=5, pady=100, sticky='e')
+output_label.grid(row=1000, column=0, padx=5, pady=5, sticky='e')
 output_entry = ttk.Entry(app)
-output_entry.grid(row=1000, column=1, padx=5, pady=100, sticky='ew')
+output_entry.grid(row=1000, column=1, padx=5, pady=5, sticky='ew')
 browse_button = ttk.Button(app, text="찾아보기", command=browse_output_directory)
-browse_button.grid(row=1000, column=2, padx=(5, 30), pady=100)
-
-
+browse_button.grid(row=1000, column=2, padx=5, pady=5)
 
 # 캡처 시작 버튼
-start_button = ttk.Button(app, text="캡처 시작", command=start_capture)
+start_button = ttk.Button(app, text="캡처 시작", command=execute_and_save_artifacts)
 start_button.grid(row=1001, column=0, columnspan=3, padx=5, pady=20)
 
+# Grid column configuration for resizing behavior
+app.grid_columnconfigure(1, weight=1)  # 이것은 중간 열에 가중치를 주어 윈도우 크기가 변경될 때 가로로 늘어나게 합니다.
 
-
-result_label = tk.Label(app, justify=tk.LEFT, anchor='w')
-result_label.grid(row=1002, column=0, columnspan=3, padx=5, pady=20)
-
-
-app.grid_rowconfigure(1, weight=1)
-app.grid_columnconfigure(1, weight=1)
 app.mainloop()
-
