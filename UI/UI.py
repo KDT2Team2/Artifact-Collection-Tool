@@ -8,6 +8,8 @@ import psutil
 import win32evtlog
 import win32evtlogutil
 import win32gui
+import win32con
+import win32service
 import re
 from scapy.all import *
 import pythoncom
@@ -16,6 +18,14 @@ import hashlib
 import psutil
 from datetime import datetime
 import time
+import winreg
+import pandas as pd
+from datetime import datetime
+import codecs
+import getpass
+import chardet
+
+
 
 global canvas
 output_directory = ""
@@ -289,16 +299,80 @@ def sys_logon_info_func(output_directory):
                 events = win32evtlog.ReadEventLog(hand, flags, 0)
 
 def regi_service_info_func(output_directory):
-    return 1
+    resume = 0
+    accessSCM = win32con.GENERIC_READ
+    accessSrv = win32service.SC_MANAGER_ALL_ACCESS
+
+    hscm = win32service.OpenSCManager(None, None, accessSCM)
+
+    typeFilter = win32service.SERVICE_WIN32
+    stateFilter = win32service.SERVICE_STATE_ALL
+
+    statuses = win32service.EnumServicesStatus(hscm, typeFilter, stateFilter)
+
+    output_path = os.path.join(output_directory, '등록된 서비스 정보.csv')
+    with open(output_path, 'w', newline='', encoding='utf-8') as f:
+        csv_writer = csv.writer(f)
+        csv_writer.writerow(['Short Name', 'Description', 'Status'])
+
+        for (short_name, desc, status) in statuses:
+            csv_writer.writerow([short_name, desc, status])
 
 def recent_act_info_func(output_directory):
     return 1
 
 def userassist_func(output_directory):
-    return 1
+    key_path = r"Software\Microsoft\Windows\CurrentVersion\Explorer\UserAssist"
+    userassist_list = []
+
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path) as key:
+            for i in range(0, winreg.QueryInfoKey(key)[0]):
+                userassist = winreg.EnumKey(key, i)
+                userassist_key_path = f"{key_path}\{userassist}\Count"
+
+                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, userassist_key_path) as userassist_key:
+                    for j in range(0, winreg.QueryInfoKey(userassist_key)[1]):
+                        userassist_key_name = winreg.EnumValue(userassist_key, j)
+                        try:
+                            decrypted_userassist = codecs.decode(userassist_key_name[0], 'rot_13')
+                            userassist_list.append(decrypted_userassist)
+                        except:
+                            userassist_list.append(userassist_key_name[0])
+                            continue
+
+        # 결과를 CSV 파일에 쓰기
+        with open(os.path.join(output_directory, 'UserAssist.csv'), 'w', newline="") as f:
+            csv_writer = csv.writer(f)
+            csv_writer.writerow(['File Name'])
+            for item in userassist_list:
+                csv_writer.writerow([item])
+
+    except Exception as e:
+        print(f"[-] UserAssist 값 파싱 중 오류 발생: {e}")
 
 def autorun_func(output_directory):
-    return 1
+    auto_run_list = [
+        'Software\Microsoft\Windows\CurrentVersion\Run', 
+        'Software\Microsoft\Windows\CurrentVersion\RunOnce'
+    ]
+
+    # CSV 파일 생성
+    with open(os.path.join(output_directory, 'AutoRun.csv'), 'w', newline="") as f:
+        csv_writer = csv.writer(f)
+        csv_writer.writerow(['Process Name', 'Process Path', 'Status'])
+
+        # 레지스트리 키를 열고 정보 추출
+        for key_path in auto_run_list:
+            for hkey in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
+                try:
+                    with winreg.OpenKey(hkey, key_path) as key:
+                        for j in range(winreg.QueryInfoKey(key)[1]):
+                            auto_run_info = winreg.EnumValue(key, j)
+                            csv_writer.writerow([auto_run_info[0], auto_run_info[1], auto_run_info[2]])
+                except Exception as e:
+                    print(f"[-] An error occurred: {e}")
+
 
 def registry_func(output_directory):
     return 1
@@ -307,13 +381,100 @@ def browser_info_func(output_directory):
     return 1
 
 def bin_func(output_directory):
-    return 1
+    def get_reg_value_sid(user_name, key_path):
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key_path) as key:
+            i = 0
+            while True:
+                try:
+                    sid = winreg.EnumKey(key, i)
+                    sid_key_path = f"{key_path}\{sid}"
+                    with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, sid_key_path) as sid_key:
+                        profile_path, _ = winreg.QueryValueEx(sid_key, "ProfileImagePath")
+                        if user_name.lower() in profile_path.lower():
+                            return sid
+                    i += 1
+                except:
+                    break
+
+    def analyze_deleted_file(file, file_path):
+        origin_file = f"$R{file[2:]}"
+        origin_file_path = f"{file_path}\\{origin_file}"
+        deleted_file_path = f"{file_path}\\{file}"
+
+        try:
+            with open(deleted_file_path, 'rb') as f:
+                raw_data = f.read()
+                result = chardet.detect(raw_data)
+                encoding = result['encoding'] if result['encoding'] is not None else 'utf-8'
+
+
+                content = raw_data.decode(encoding)
+                creation_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(os.path.getctime(deleted_file_path)))
+                modified_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(os.path.getmtime(deleted_file_path)))
+                access_time = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(os.path.getatime(deleted_file_path)))
+
+                file_size = str(os.path.getsize(origin_file_path))
+                return [deleted_file_path, creation_time, access_time, modified_time, file_size]
+        except UnicodeDecodeError as e:
+            print(f"[-] 인코딩 오류 발생 : {e}")
+            return None
+        except Exception as e:
+            print(f"다른 오류 발생 : {e}")
+            return None
+
+    # 사용자 이름 가져오기
+    user_name = getpass.getuser()
+    join_user_name = f"C:\\Users\\{user_name}"
+    recycle_path = 'C:\\$Recycle.Bin\\'
+    sid = get_reg_value_sid(join_user_name, r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList")
+    personal_recycle_path = f"{recycle_path}{sid}"
+
+    if os.path.exists(personal_recycle_path):
+        recycle_files = os.listdir(personal_recycle_path)
+        with open(os.path.join(output_directory, '휴지통.csv'), 'w', newline="") as f:
+            csv_writer = csv.writer(f)
+            csv_writer.writerow(['Deleted FilePath', 'Creation Time', 'Access Time', 'Modified Time', 'File Size'])
+
+            for deleted_file in recycle_files:
+                if deleted_file == "desktop.ini":
+                    continue
+                else:
+                    file_info = analyze_deleted_file(deleted_file, personal_recycle_path)
+                    if file_info:
+                        csv_writer.writerow(file_info)
+    else:
+        print("[-] Recycle Bin 파싱 중 경로 문제 발생")
 
 def powershell_log_func(output_directory):
     return 1
 
+
 def lnk_files_func(output_directory):
-    return 1
+    user = getpass.getuser()
+    lnk_file_path = f"C:\\Users\\{user}\\AppData\\Roaming\\Microsoft\\Windows\\Recent"
+
+    if os.path.exists(lnk_file_path):
+        lnk_file_list = os.listdir(lnk_file_path)
+        filename, createtime_list, modifiedtime_list, accesstime_list = [], [], [], []
+
+        for file in lnk_file_list:
+            full_path = os.path.join(lnk_file_path, file)
+            createtime_list.append(datetime.fromtimestamp(os.path.getctime(full_path)))
+            modifiedtime_list.append(datetime.fromtimestamp(os.path.getmtime(full_path)))
+            accesstime_list.append(datetime.fromtimestamp(os.path.getatime(full_path)))
+            filename.append(file)
+
+        # 데이터프레임 생성 및 CSV 파일로 저장
+        df = pd.DataFrame({
+            'FileName': filename,
+            'CreatedTime': createtime_list,
+            'ModifiedTime': modifiedtime_list,
+            'Accesstime': accesstime_list
+        })
+        output_file = os.path.join(output_directory, 'LNK 파일.csv')
+        df.to_csv(output_file)
+    else:
+        print("[-] Lnk 파일 경로가 올바르지 않음")
 
 
 # == 아티팩트 함수 ==========================================================================================================================
