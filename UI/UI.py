@@ -20,6 +20,7 @@ import time
 global canvas
 output_directory = ""
 status_window = None
+trees = {}
 
 # 사용자 지정 경로 설정 함수
 def browse_output_directory():
@@ -30,7 +31,13 @@ def browse_output_directory():
         output_entry.insert(0, directory)
         output_directory = directory
 
-# 체크된 아티팩트 실행 및 CSV 파일 저장 함수
+def set_default_output_directory():
+    global output_directory
+    default_directory = os.getcwd()
+    output_entry.delete(0, tk.END)
+    output_entry.insert(0, default_directory)
+    output_directory = default_directory
+
 def execute_and_save_artifacts():
     for artifact, var in variables.items():
         if var.get():
@@ -68,31 +75,28 @@ def patch_list_func(output_directory):
     history_count = update_searcher.GetTotalHistoryCount()
     updates = update_searcher.QueryHistory(0, history_count)
 
-    with open(os.path.join(output_directory, 'Patch_List.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+    with open(os.path.join(output_directory, '패치 리스트.csv'), 'w', newline='', encoding='utf-8-sig') as file:
         writer = csv.writer(file)
         writer.writerow(['Title', 'Update ID', 'Version', 'Date'])
 
         for update in updates:
             title = update.Title
 
-            # KB 번호와 버전을 추출하기 위한 정규 표현식
             kb_pattern = r"KB\d+"
             version_pattern = r"\(버전\s([\d.]+)\)"
 
-            # 정규 표현식으로 KB 번호와 버전 찾기
             kb_match = re.search(kb_pattern, title)
             version_match = re.search(version_pattern, title)
 
             kb_number = kb_match.group(0) if kb_match else "KB 정보 없음"
             version = version_match.group(1) if version_match else "버전 정보 없음"
 
-            # title에서 KB 정보 이전까지만 추출
             title_only = title.split(" - ")[0] if " - " in title else title
 
             writer.writerow([title_only, kb_number, version, str(update.Date)])
 
 def process_list_info_func(output_directory):
-    with open(os.path.join(output_directory, 'Processes_List.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+    with open(os.path.join(output_directory, '실행 프로세스 목록 정보.csv'), 'w', newline='', encoding='utf-8-sig') as file:
         writer = csv.writer(file)
         writer.writerow(['Process ID', 'Process name', 'Process path', 'Process creat time', 'Process access time', 'Process modify time', 'Process size', 'hash value(sha-256)'])
 
@@ -100,15 +104,12 @@ def process_list_info_func(output_directory):
             process_info = proc.info
             file_path = process_info.get("exe")
             if file_path and os.path.isfile(file_path):
-                # MAC 타임스탬프
                 creation_time = os.path.getctime(file_path)
                 access_time = os.path.getatime(file_path)
                 modification_time = os.path.getmtime(file_path)
                 
-                # 파일 크기
                 file_size = os.path.getsize(file_path)
 
-                # 해시값 계산
                 hash_md5 = hashlib.sha256()
                 with open(file_path, 'rb') as f:
                     for chunk in iter(lambda: f.read(4096), b""):
@@ -141,7 +142,7 @@ def process_list_info_func(output_directory):
 def connection_info_func(output_directory):
     host_name = socket.gethostname()
 
-    with open(os.path.join(output_directory, 'Open_Port_List.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+    with open(os.path.join(output_directory, '연결 정보 (열려진 포트).csv'), 'w', newline='', encoding='utf-8-sig') as file:
         writer = csv.writer(file)
         writer.writerow(['Port Number'])
 
@@ -155,7 +156,7 @@ def connection_info_func(output_directory):
                 writer.writerow([sent[TCP].dport])
 
 def ip_setting_info_func(output_directory):
-    with open(os.path.join(output_directory, 'IP_configurations_info.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+    with open(os.path.join(output_directory, 'IP 설정 정보.csv'), 'w', newline='', encoding='utf-8-sig') as file:
         writer = csv.writer(file)
         writer.writerow(['Interface', 'IP Address', 'Netmask', 'Broadcast Address'])
         
@@ -176,12 +177,10 @@ def ip_setting_info_func(output_directory):
 def ARP_info_func(output_directory):
     arp_table = os.popen('arp -a').read()
 
-    with open(os.path.join(output_directory, 'ARP_info.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+    with open(os.path.join(output_directory, 'ARP 정보.csv'), 'w', newline='', encoding='utf-8-sig') as file:
         writer = csv.writer(file)
-        # CSV 헤더
         writer.writerow(['IP Address', 'Physical Address', 'Type'])
 
-        # 활성화된 ARP 테이블에 대한 정보
         lines = arp_table.split('\n')
         for line in lines:
             if line.strip() and 'internet address' not in line.lower():
@@ -191,7 +190,7 @@ def ARP_info_func(output_directory):
                     writer.writerow([parts[0], parts[1], type_value])
 
 def NetBIOS_info_func(output_directory):
-    with open(os.path.join(output_directory, 'NetBIOS_info.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+    with open(os.path.join(output_directory, 'NetBIOS 정보.csv'), 'w', newline='', encoding='utf-8-sig') as file:
         writer = csv.writer(file)
         writer.writerow(['Network Name', 'IP Address', 'NetBIOS name', 'NetBIOS type', 'NetBIOS status'])
 
@@ -228,7 +227,7 @@ def open_handle_info_func(output_directory):
     result = []
     win32gui.EnumWindows(callback, result)
 
-    with open(os.path.join(output_directory, 'Window(handler)_info.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+    with open(os.path.join(output_directory, '열려있는 핸들 정보.csv'), 'w', newline='', encoding='utf-8-sig') as file:
         writer = csv.writer(file)
         writer.writerow(['Window Number', 'Window Title', 'Window Class', 'Visible'])
 
@@ -241,7 +240,7 @@ def open_handle_info_func(output_directory):
             ])
 
 def work_schedule_info_func(output_directory):
-    with open(os.path.join(output_directory, 'Scheduled_Task_List.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+    with open(os.path.join(output_directory, '작업 스케쥴 정보.csv'), 'w', newline='', encoding='utf-8-sig') as file:
         writer = csv.writer(file)
         writer.writerow(["Task name", "Last run Time", "Next run Time", "Enabled", "Trigger Count", "Action Count"])
 
@@ -259,13 +258,14 @@ def work_schedule_info_func(output_directory):
                 triggers = task.Definition.Triggers
                 actions = task.Definition.Actions
 
-                writer.writerow({task.Name,task.LastRunTime,task.NextRunTime,task.Enabled,triggers.Count,actions.Count})
+                writer.writerow([task.Name, task.LastRunTime, task.NextRunTime, task.Enabled, triggers.Count, actions.Count])
 
-def sys_logon_info_func(query, output_directory):
+def sys_logon_info_func(output_directory):
     server = 'localhost'
     log_type = ['Application', 'System', 'Security', 'Setup', 'Forwarded Events']
+    query = 'logon'
 
-    with open(os.path.join(output_directory, 'Event_log_List.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+    with open(os.path.join(output_directory, '시스템 로그온 정보.csv'), 'w', newline='', encoding='utf-8-sig') as file:
         writer = csv.writer(file)
         writer.writerow(['Log Type', 'Event ID', 'Source', 'Time Generated', 'Time Written', 'Event Category', 'Event Type'])
 
@@ -358,7 +358,6 @@ def open_status_window():
     status_label = tk.Label(status_window, text="작업 시작", font=("Arial", 12))
     status_label.pack(pady=10)
 
-    # 종료 버튼 함수
     def on_exit():
         app.quit()
 
@@ -367,22 +366,41 @@ def open_status_window():
         for widget in app.winfo_children():
             widget.destroy()
 
+        csv_files = [file for file in os.listdir(output_directory) if file.endswith(".csv")]
+        selected_file_var = tk.StringVar()
+
+        # 콤보박스
+        file_combobox = ttk.Combobox(app, textvariable=selected_file_var, values=csv_files)
+        file_combobox.grid(row=0, column=0, padx=10, pady=10, sticky='nw')
+
+        # 프레임 생성
         scrollable_frame = create_scrollable_frame(app)
+        scrollable_frame.grid(row=1, column=0, sticky='nsew')
+        app.grid_columnconfigure(0, weight=1)
+        app.grid_rowconfigure(1, weight=1)
 
-        # 결과 표시 로직
-        for file_name in os.listdir(output_directory):
-            if file_name.endswith(".csv"):
-                file_path = os.path.join(output_directory, file_name)
-                data = read_csv(file_path)
-                label = tk.Label(scrollable_frame, text=file_name, font=("Arial", 12))
-                label.pack()
-                show_csv_in_treeview(scrollable_frame, data)
+        def on_file_selected(event):
+            selected_file = selected_file_var.get()
+            file_path = os.path.join(output_directory, selected_file)
+            data = read_csv(file_path)
 
-    # 종료 버튼 추가
+            for widget in scrollable_frame.winfo_children():
+                widget.destroy()
+
+            show_csv_in_treeview(scrollable_frame, data, selected_file)
+
+        file_combobox.bind('<<ComboboxSelected>>', on_file_selected)
+
+        if csv_files:
+            selected_file_var.set(csv_files[0])
+            on_file_selected(None)
+
+
+    # 종료 버튼
     exit_button = tk.Button(status_window, text="종료", command=on_exit, state='disabled')
     exit_button.pack(side="left", padx=10, pady=10)
 
-    # 결과보기 버튼 추가
+    # 결과보기 버튼
     result_button = tk.Button(status_window, text="결과보기", command=show_results, state='disabled')
     result_button.pack(side="right", padx=10, pady=10)
 
@@ -407,77 +425,123 @@ def read_csv(file_path):
     return data
 
 
-def show_csv_in_treeview(parent, data):
+def show_csv_in_treeview(parent, data, title):
     if not data:
         return
-    
+
     frame = tk.Frame(parent)
-    frame.pack(expand=True, fill="both")
+    frame.pack(expand=True, fill='both')
 
-    tree = ttk.Treeview(frame, columns=data[0], show="headings")
-    tree.pack(side="left", expand=True, fill="both")
+    # 제목 라벨
+    title_label = tk.Label(frame, text=title, bg="gray", fg="white")
+    title_label.pack(side="top", fill="x")
 
-    # 스크롤바 추가
-    scrollbar = tk.Scrollbar(frame, orient="vertical", command=tree.yview)
-    scrollbar.pack(side="right", fill="y")
+    tree_frame = tk.Frame(frame)
+    tree_frame.pack(expand=True, fill='both')
+
+    tree = ttk.Treeview(tree_frame, columns=data[0], show="headings")
+    tree.pack(side="left", expand=True, fill='both')
+
+    # 스크롤바
+    scrollbar = tk.Scrollbar(tree_frame, orient="vertical", command=tree.yview)
+    scrollbar.pack(side="right", fill='y')
     tree.configure(yscrollcommand=scrollbar.set)
 
     for col in data[0]:
-        tree.column(col, width=100, anchor="center")
+        tree.column(col, width=92, anchor="center")
         tree.heading(col, text=col)
 
     for row in data[1:]:
         tree.insert("", "end", values=row)
 
+    # 검색 기능
+    search_frame = tk.Frame(frame)
+    search_frame.pack(side="top", fill="x")
+
+    headers = ['전체'] + data[0]
+    header_combobox = ttk.Combobox(search_frame, values=headers, state="readonly")
+    header_combobox.pack(side="left")
+    header_combobox.current(0)
+
+    search_entry = tk.Entry(search_frame)
+    search_entry.pack(side="left")
+
+    def on_search():
+        query = search_entry.get().lower() 
+        selected_header = header_combobox.get()
+
+        for item in tree.get_children():
+            tree.item(item, tags=("normal",))
+
+        matching_items = []
+        non_matching_items = []
+
+        if selected_header == "전체":
+            for item in tree.get_children():
+                if query in " ".join(map(str, tree.item(item, 'values'))).lower():
+                    matching_items.append(item)
+                else:
+                    non_matching_items.append(item)
+        else:
+            col_index = data[0].index(selected_header)
+            for item in tree.get_children():
+                if query in str(tree.item(item, 'values')[col_index]).lower():
+                    matching_items.append(item)
+                else:
+                    non_matching_items.append(item)
+
+        for item in matching_items + non_matching_items:
+            tree.move(item, '', 'end')
+
+        for item in matching_items:
+            tree.item(item, tags=("found",))
+
+        tree.tag_configure('found', background='yellow')
+        tree.tag_configure('normal', background='white')
 
 
+    search_button = tk.Button(search_frame, text="검색", command=on_search)
+    search_button.pack(side="left")
+
+
+
+
+def on_frame_configure(event, canvas=None):
+    if not canvas:
+        canvas = event.widget
+    canvas.configure(scrollregion=canvas.bbox("all"))
 
 def create_scrollable_frame(parent):
+    global canvas
     canvas = tk.Canvas(parent)
-    canvas.pack(side="left", fill="both", expand=True)
-
-    scrollbar = tk.Scrollbar(parent, orient="vertical", command=canvas.yview)
-    scrollbar.pack(side="right", fill="y")
+    canvas.grid(row=1, column=0, sticky='nsew')
+    parent.grid_rowconfigure(1, weight=1)
+    parent.grid_columnconfigure(0, weight=1)
 
     scrollable_frame = tk.Frame(canvas)
-    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+    canvas.create_window((0, 0), window=scrollable_frame, anchor='nw')
 
-    def on_frame_configure(event):
-        canvas.configure(scrollregion=canvas.bbox("all"))
-
-    def on_mousewheel(event):
-        canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-
-    scrollable_frame.bind("<Configure>", on_frame_configure)
-    canvas.bind_all("<MouseWheel>", on_mousewheel)
-
-    canvas.configure(yscrollcommand=scrollbar.set)
+    scrollable_frame.bind("<Configure>", lambda event, canvas=canvas: on_frame_configure(event, canvas))
 
     return scrollable_frame
+
 
 
 # == 메인 창 =================================================================================================================================
 def execute_and_save_artifacts():
     global status_window
-    update_status = open_status_window()  # 상태 업데이트 창 열기
+    update_status = open_status_window()
     for artifact, var in variables.items():
         if var.get():
             func = artifact_functions.get(artifact)
             if func:
-                update_status(f"{artifact} 작업 시작")  # 상태 업데이트
-                func(output_directory)  # 아티팩트 함수 실행
-                update_status(f"{artifact} 작업 완료")  # 상태 업데이트
+                update_status(f"{artifact} 작업 시작")
+                func(output_directory)
+                update_status(f"{artifact} 작업 완료")
 
-    update_status("모든 작업 완료.")  # 모든 작업 완료 상태 업데이트
+    update_status("모든 작업 완료.")
 
 
-def browse_output_directory():
-    global output_directory
-    directory = filedialog.askdirectory()
-    if directory:
-        output_entry.delete(0, tk.END)
-        output_entry.insert(0, directory)
-        output_directory = directory
 
 app = tk.Tk()
 app.title('데이터 수집 도구')
@@ -486,15 +550,17 @@ app['bg'] = '#f0f0f0'
 app.resizable(False, False)
 
 style = ttk.Style()
+style.map("Treeview", 
+          background=[("selected", "SystemWindow")],
+          foreground=[("selected", "SystemWindowText")])
 style.theme_use('clam')
 
 # 사례 참조 섹션
 case_ref_label = ttk.Label(app, text="케이스 번호 / 참조:", background='#f0f0f0')
 case_ref_label.grid(row=0, column=0, padx=5, pady=5)
 case_ref_entry = ttk.Entry(app)
-case_ref_entry.grid(row=0, column=1, padx=5, pady=5, columnspan=2, sticky='ew')  # 'ew'는 동서(east-west)를 의미하여 가로로 채워짐을 의미합니다.
+case_ref_entry.grid(row=0, column=1, padx=5, pady=5, columnspan=2, sticky='ew')
 
-# 탐지할 아티팩트 선택 라벨
 artifact_label = ttk.Label(app, text="탐지할 아티팩트 선택", background='#f0f0f0', font=('Arial', 10))
 artifact_label.grid(row=1, column=0, columnspan=1, padx=5, pady=5)
 
@@ -537,7 +603,6 @@ for i, option in enumerate(options):
     checkbuttons[option] = ttk.Checkbutton(options_frame, text=option, variable=variables[option])
     checkbuttons[option].grid(row=i // 5, column=i % 5, padx=3, pady=2, sticky='w')
 
-# 프레임 내의 각 열에 가중치 설정
 for i in range(5):
     options_frame.grid_columnconfigure(i, weight=1)
 
@@ -545,6 +610,7 @@ for i in range(5):
 output_label = ttk.Label(app, text="출력 저장 위치:", background='#f0f0f0')
 output_label.grid(row=1000, column=0, padx=5, pady=5, sticky='e')
 output_entry = ttk.Entry(app)
+set_default_output_directory()
 output_entry.grid(row=1000, column=1, padx=5, pady=5, sticky='ew')
 browse_button = ttk.Button(app, text="찾아보기", command=browse_output_directory)
 browse_button.grid(row=1000, column=2, padx=5, pady=5)
@@ -553,7 +619,6 @@ browse_button.grid(row=1000, column=2, padx=5, pady=5)
 start_button = ttk.Button(app, text="캡처 시작", command=execute_and_save_artifacts)
 start_button.grid(row=1001, column=0, columnspan=3, padx=5, pady=20)
 
-# Grid column configuration for resizing behavior
-app.grid_columnconfigure(1, weight=1)  # 이것은 중간 열에 가중치를 주어 윈도우 크기가 변경될 때 가로로 늘어나게 합니다.
+app.grid_columnconfigure(1, weight=1) 
 
 app.mainloop()
