@@ -24,6 +24,16 @@ from datetime import datetime
 import codecs
 import getpass
 import chardet
+from browser_history.browsers import Chrome
+from browser_history.browsers import Firefox
+from browser_history.browsers import Brave
+from browser_history.browsers import Chromium
+from browser_history.browsers import Edge
+from browser_history.browsers import LibreWolf
+from browser_history.browsers import Opera
+from browser_history.browsers import OperaGX
+from browser_history.browsers import Safari
+from browser_history.browsers import Vivaldi
 
 
 
@@ -378,7 +388,49 @@ def registry_func(output_directory):
     return 1
 
 def browser_info_func(output_directory):
-    return 1
+    browsers = ['Chrome', 'Firefox', 'Brave', 'Chromium', 'Edge', 'LibreWolf', 'Opera', 'OperaGX', 'Safari', 'Vivaldi']
+
+    try:
+        with open('browser_history.csv', 'w', newline='') as f:
+            csv_writer = csv.writer(f)
+            csv_writer.writerow(['Time Stamp', 'Browser', 'URL Link', 'Explain'])
+
+            for browser in browsers:
+                try:
+                    if browser == 'Chrome':
+                        f = Chrome()
+                    elif browser == 'Firefox':
+                        f = Firefox()
+                    elif browser == 'Brave':
+                        f = Brave()
+                    elif browser == 'Chromium':
+                        f = Chromium()
+                    elif browser == 'Edge':
+                        f = Edge()
+                    elif browser == 'LibreWolf':
+                        f = LibreWolf()
+                    elif browser == 'Opera':
+                        f = Opera()
+                    elif browser == 'OperaGX':
+                        f = OperaGX()
+                    elif browser == 'Safari':
+                        f = Safari()
+                    elif browser == 'Vivaldi':
+                        f = Vivaldi()
+                    else:
+                        return
+
+                    outputs = f.fetch_history()
+                    his = outputs.histories
+
+                    for i in his:
+                        csv_writer.writerow([i[0], browser, i[1], i[2]])
+
+                except Exception as e:
+                    print(f"[-] Browser History({browser}) 파싱 중 에러 발생 : {e}")
+
+    except Exception as e:
+        print(f"[-] browser_history.csv 파일 관련 에러 발생 : {e}")
 
 def bin_func(output_directory):
     def get_reg_value_sid(user_name, key_path):
@@ -446,8 +498,33 @@ def bin_func(output_directory):
         print("[-] Recycle Bin 파싱 중 경로 문제 발생")
 
 def powershell_log_func(output_directory):
-    return 1
+    server=''
+    logtype='Windows PowerShell'
+    handle = win32evtlog.OpenEventLog(server, logtype)
+    flags = win32evtlog.EVENTLOG_BACKWARDS_READ | win32evtlog.EVENTLOG_SEQUENTIAL_READ
+    total = 0
 
+    try:
+        with open(os.path.join(output_directory, '파워쉘 로그.csv'), 'w', newline='') as f:
+            csv_writer = csv.writer(f)
+            csv_writer.writerow(['Event Category', 'Generated Time', 'Source Name', 'Event ID', 'Event Type', 'Message'])
+
+            while True:
+                events = win32evtlog.ReadEventLog(handle, flags, 0)
+                if not events:
+                    break
+
+                for event in events:
+                    if event.EventCategory is None:
+                        continue
+                    else:
+                        csv_writer.writerow([event.EventCategory, event.TimeGenerated, event.SourceName, event.EventID, event.EventType, event.StringInserts])
+                        total += 1
+
+    finally:
+        win32evtlog.CloseEventLog(handle)
+
+    return total
 
 def lnk_files_func(output_directory):
     user = getpass.getuser()
