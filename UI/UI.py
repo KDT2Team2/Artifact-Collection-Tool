@@ -2,7 +2,6 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext
 import csv
 import os
-import tkinter
 import socket
 import psutil
 import win32evtlog
@@ -12,7 +11,6 @@ import win32con
 import win32service
 import re
 from scapy.all import *
-import pythoncom
 import win32com.client
 import hashlib
 import psutil
@@ -23,6 +21,8 @@ import pandas as pd
 from datetime import datetime
 import codecs
 import getpass
+import platform
+import subprocess
 import chardet
 from browser_history.browsers import Chrome
 from browser_history.browsers import Firefox
@@ -34,6 +34,7 @@ from browser_history.browsers import Opera
 from browser_history.browsers import OperaGX
 from browser_history.browsers import Safari
 from browser_history.browsers import Vivaldi
+
 
 
 
@@ -71,13 +72,63 @@ def memory_dump_func(output_directory):
     return 1
 
 def prefetch_func(output_directory):
-    return 1
+    with open(os.path.join(output_directory, 'Prefetch.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+        csv_writer = csv.writer(file)
+
+        # Write the header line
+        header = ["Artifact timestamp", "Filename", "First executed", "Last executed", "Action", "Source"]
+        csv_writer.writerow(header)
+
+        prefetch_directory = r"C:\Windows\Prefetch\\"
+        prefetch_files = os.listdir(prefetch_directory)
+
+        for pf_file in prefetch_files:
+            if pf_file.endswith(".pf"):
+                full_path = os.path.join(prefetch_directory, pf_file)
+                app_name = pf_file[:-12]
+                first_executed = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(os.path.getctime(full_path)))
+                last_executed = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(os.path.getmtime(full_path)))
+
+                first_executed_line = [first_executed, app_name, first_executed, last_executed, "Program first executed", "Prefetch - " + pf_file]
+                last_executed_line = [last_executed, app_name, first_executed, last_executed, "Program last executed", "Prefetch - " + pf_file]
+
+                csv_writer.writerow(first_executed_line)
+                csv_writer.writerow(last_executed_line)
 
 def NTFS_func(output_directory):
     return 1
 
 def sys_info_func(output_directory):
-    return 1
+    try:
+        with open(os.path.join(output_directory, '시스템 정보.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+            csv_writer = csv.writer(file)
+            headers = ['Type', 'Information']
+            csv_writer.writerow(headers)
+
+            system_info = {
+                'System': platform.system(),
+                'Node Name': platform.node(),
+                'Release': platform.release(),
+                'Version': platform.version(),
+                'Architecture': platform.architecture(),
+                'Machine': platform.machine(),
+                'Processor': platform.processor()
+            }
+            for key, value in system_info.items():
+                csv_writer.writerow([key, value])
+
+            gp_result = subprocess.run(['gpresult', '/r'], capture_output=True, text=True)
+            group_policy_info = gp_result.stdout if gp_result.returncode == 0 else f"Error: {gp_result.stderr}"
+            csv_writer.writerow(['Group Policy Info', group_policy_info])
+
+            audit_result = subprocess.run(['auditpol', '/get', '/category:*'], capture_output=True, text=True)
+            system_audit_info = audit_result.stdout if audit_result.returncode == 0 else f"Error: {audit_result.stderr}"
+            csv_writer.writerow(['System Audit Info', system_audit_info])
+
+        print(f"System information saved to {csv_file_path}")
+
+    except Exception as e:
+        print(f"An error occurred while saving system information: {e}")
 
 def regi_hive(output_directory):
     return 1
@@ -86,7 +137,15 @@ def event_viewer_log_func(output_directory):
     return 1
 
 def enviornment_func(output_directory):
-    return 1
+    env_vars = os.environ
+    
+    with open(os.path.join(output_directory, '환경변수.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+        csv_writer = csv.writer(file, dialect=csv.excel, quoting=csv.QUOTE_ALL)
+        
+        csv_writer.writerow(['Key', 'Value'])
+        
+        for key, value in env_vars.items():
+            csv_writer.writerow([key, value])
 
 def patch_list_func(output_directory):
     update_session = win32com.client.Dispatch("Microsoft.Update.Session")
@@ -754,7 +813,7 @@ def create_scrollable_frame(parent):
     canvas = tk.Canvas(parent)
     canvas.grid(row=1, column=0, sticky='nsew')
     parent.grid_rowconfigure(1, weight=1)
-    parent.grid_columnconfigure(0, weight=1)
+    parent.grid_columnconfigure(1, weight=1)
 
     scrollable_frame = tk.Frame(canvas)
     canvas.create_window((0, 0), window=scrollable_frame, anchor='nw')
