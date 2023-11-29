@@ -692,8 +692,9 @@ def open_status_window():
         file_combobox.bind('<<ComboboxSelected>>', on_file_selected)
 
         def go_back():
-            app.quit()
-            os.execl(sys.executable, sys.executable, *sys.argv)
+           python_executable = sys.executable
+           script_file = sys.argv[0]
+           os.execl(python_executable, f'"{python_executable}"', f'"{script_file}"', *sys.argv[1:])
 
         back_button = ttk.Button(app, text="뒤로 가기", command=go_back)
         back_button.grid(row=1002, column=0, columnspan=3, padx=5, pady=20)
