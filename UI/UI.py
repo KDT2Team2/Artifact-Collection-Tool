@@ -37,7 +37,6 @@ from browser_history.browsers import Vivaldi
 
 
 
-
 global canvas
 output_directory = ""
 status_window = None
@@ -96,7 +95,11 @@ def prefetch_func(output_directory):
                 csv_writer.writerow(last_executed_line)
 
 def NTFS_func(output_directory):
-    return 1
+    image_path = "\\\\.\\C:"
+    script_path = "MFT_func.py"
+    output_file = os.path.join(output_directory, "NTFS 아티팩트.csv")
+
+    subprocess.run(["python", script_path, image_path, output_file], check=True)
 
 def sys_info_func(output_directory):
     try:
@@ -450,7 +453,7 @@ def browser_info_func(output_directory):
     browsers = ['Chrome', 'Firefox', 'Brave', 'Chromium', 'Edge', 'LibreWolf', 'Opera', 'OperaGX', 'Safari', 'Vivaldi']
 
     try:
-        with open('browser_history.csv', 'w', newline='') as f:
+        with open(os.path.join(output_directory, '브라우저 기록.csv'), 'w', newline='', encoding='utf-8') as f:
             csv_writer = csv.writer(f)
             csv_writer.writerow(['Time Stamp', 'Browser', 'URL Link', 'Explain'])
 
@@ -687,6 +690,13 @@ def open_status_window():
             show_csv_in_treeview(scrollable_frame, data, selected_file)
 
         file_combobox.bind('<<ComboboxSelected>>', on_file_selected)
+
+        def go_back():
+            app.quit()
+            os.execl(sys.executable, sys.executable, *sys.argv)
+
+        back_button = ttk.Button(app, text="뒤로 가기", command=go_back)
+        back_button.grid(row=1002, column=0, columnspan=3, padx=5, pady=20)
 
         if csv_files:
             selected_file_var.set(csv_files[0])
