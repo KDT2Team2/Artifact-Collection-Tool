@@ -652,11 +652,11 @@ artifact_functions = {
 def open_status_window():
     global status_window
     status_window = tk.Toplevel(app)
-    status_window.title("진행 상태")
+    status_window.title("완료")
     status_window.geometry("300x100")
-    app.resizable(False, False)
-    status_label = tk.Label(status_window, text="작업 시작", font=("Arial", 12))
-    status_label.pack(pady=10)
+    status_window.resizable(False, False)
+    complete_label = tk.Label(status_window, text="모든 작업 완료.", font=("Arial", 12))
+    complete_label.pack(pady=10)
 
     def on_exit():
         app.quit()
@@ -705,21 +705,16 @@ def open_status_window():
 
 
     # 종료 버튼
-    exit_button = tk.Button(status_window, text="종료", command=on_exit, state='disabled')
+    exit_button = tk.Button(status_window, text="종료", command=on_exit)
     exit_button.pack(side="left", padx=10, pady=10)
 
     # 결과보기 버튼
-    result_button = tk.Button(status_window, text="결과보기", command=show_results, state='disabled')
+    result_button = tk.Button(status_window, text="결과보기", command=show_results)
     result_button.pack(side="right", padx=10, pady=10)
 
-    def update_status(message):
-        status_label.config(text=message)
-        status_window.update()
-        if message == "모든 작업 완료.":
-            exit_button.config(state='normal')
-            result_button.config(state='normal')
+    status_window.withdraw()
 
-    return update_status
+    return lambda message: status_label.config(text=message)
 
 
 
@@ -848,6 +843,7 @@ def execute_and_save_artifacts():
                 update_status(f"{artifact} 작업 완료")
 
     update_status("모든 작업 완료.")
+    status_window.deiconify()
 
 
 
@@ -926,6 +922,9 @@ browse_button.grid(row=1000, column=2, padx=5, pady=5)
 # 캡처 시작 버튼
 start_button = ttk.Button(app, text="캡처 시작", command=execute_and_save_artifacts)
 start_button.grid(row=1001, column=0, columnspan=3, padx=5, pady=20)
+
+status_label = tk.Label(app, text="", font=("Arial", 12), bg='#f0f0f0')
+status_label.grid(row=1002, column=0, columnspan=3, padx=5, pady=5)
 
 app.grid_columnconfigure(1, weight=1) 
 
