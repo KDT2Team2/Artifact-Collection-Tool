@@ -1,54 +1,54 @@
-from Evtx.Evtx import Evtx
-from Evtx.Views import evtx_file_xml_view
+import Evtx.Evtx as evtx
 import xml.etree.ElementTree as ET
-from xml.etree.ElementTree import parse
+import csv
 
-def get_event_log_info(evtx_file_path):
-    try:
-        # Open the Event Log file
-        with Evtx(evtx_file_path) as evtx:
-            # Parse the XML view of the Event Log
-            records = evtx_file_xml_view(evtx.get_file_header())
+def parse_tag(element):
+    if element.tag.index('}') > 0:
+        return element[element.tag.index('}')+1:]
 
-            # Iterate through all records in the Event Log
-            for record in records:
-                # Access information from the record
-                # event_id = record.find("EventID").text if record.find("EventID") is not None else "N/A"
-                # timestamp = record.find("TimeCreated").get("SystemTime") if record.find("TimeCreated") is not None else "N/A"
-                # level = record.find("Level").text if record.find("Level") is not None else "N/A"
-                # message = record.find("Data").text if record.find("Data") is not None else "N/A"
+def parse_log(log_file, output_csv_file):
+    with evtx.Evtx(log_file) as log:
+        title_row = [
+            'Provider name',
+            'Provider guid',
+            'EventID',
+            'Version',
+            'Level',
+            'Task',
+            'Opcode',
+            'Keywords',
+            'TimeCreadted',
+            'EventRecordID',
+            'ActivityID',
+            'RelatedActivityID',
+            'ProcessID',
+            'ThreadID',
+            'Channel',
+            'Computer',
+            'Security'
+        ]
+        csv_file = csv.writer(open(output_csv_file, 'w', newline=''), dialect=csv.excel, quoting=1)
+        csv_file.writerow(title_row)
 
-                # print(f"Event ID: {event_id}")
-                # print(f"Timestamp: {timestamp}")
-                # print(f"Level: {level}")
-                # print(f"Message: {message}")
-                # print("-" * 50)
-                parse_event_xml(record)
+        for record in log.records():
+            csv_record=[]
+            root = ET.fromstring(record.xml())
+            for child in root[0]:
+                if child.attrib.items(): # attribute가 있는 경우
+                    for key, value in child.attrib.items():
+                        if key == "Qualifiers":
+                            csv_record.append(child.text)
+                        else:
+                            csv_record.append(value)
+                else: # attribute가 없는 경우
+                    csv_record.append(child.text)
+            csv_file.writerow(csv_record)
 
-    except FileNotFoundError:
-        print(f"Event Log file {evtx_file_path} not found.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
+if __name__ == "__main__":
+    parse_log('C:\\Windows\\System32\\winevt\\Logs\\Security.evtx', "eventlog_security.csv")
+    # parse_log('C:\\Windows\\System32\\winevt\\Logs\\Application.evtx', "eventlog_application.csv")
+    # parse_log('C:\\Windows\\System32\\winevt\\Logs\\System.evtx', "eventlog_system.csv")
 
-def parse_event_xml(evt):
-    # Extract the XML string from the tuple
-    print(evt[0])
-    xml_string = evt[0]
 
-    # Parse the XML string
-    root = parse(ET.fromstring(xml_string))
-    
-    # Extract information from the parsed XML
-    event_id = root.find(".//EventID")
-    time_created = root.find(".//TimeCreated")
-    level = root.find(".//Level")
-    message = root.find(".//Data[@Name='ObjectName']")
+            
 
-    # Print extracted information
-    print(f"Event ID: {event_id}")
-    print(f"Time Created: {time_created}")
-    print(f"Level: {level}")
-    print(f"Object Name: {message}")
-
-# Example usage
-get_event_log_info("C:\\Windows\\System32\\winevt\\Logs\\Security.evtx")
