@@ -24,6 +24,10 @@ import getpass
 import platform
 import subprocess
 import chardet
+import xml.etree.ElementTree as ET
+from Evtx import Evtx
+from Registry import Registry
+import subprocess
 from browser_history.browsers import Chrome
 from browser_history.browsers import Firefox
 from browser_history.browsers import Brave
@@ -128,16 +132,100 @@ def sys_info_func(output_directory):
             system_audit_info = audit_result.stdout if audit_result.returncode == 0 else f"Error: {audit_result.stderr}"
             csv_writer.writerow(['System Audit Info', system_audit_info])
 
-        print(f"System information saved to {csv_file_path}")
-
     except Exception as e:
         print(f"An error occurred while saving system information: {e}")
 
 def regi_hive(output_directory):
-    return 1
+    key_paths = [
+        'HKEY_CURRENT_USER',
+        r'HKLM\sam',
+        r'HKLM\security',
+        r'HKLM\software',
+        r'HKLM\system',
+        r'HKEY_USERS\.DEFAULT',
+        'HKEY_CURRENT_CONFIG',
+    ]
+    extract_files = []
+
+    def recursive_search(key, csv_writer):
+        subkeys = key.subkeys()
+        if len(subkeys) == 0:
+            for v in key.values():
+                try:
+                    csv_writer.writerow([key.path(), v.name(), v.value()])
+                except Registry.RegistryParse.UnknownTypeException:
+                    pass
+                except UnicodeDecodeError:
+                    pass
+        else:
+            for subkey in subkeys:
+                recursive_search(subkey, csv_writer)
+
+    def export_registry_key_to_csv(hive_path, output_csv):
+        reg = Registry.Registry(hive_path)
+        key = reg.root()
+        with open(output_csv, 'w', newline='', encoding='utf-8') as csv_file:
+            csv_writer = csv.writer(csv_file, dialect=csv.excel, quoting=csv.QUOTE_MINIMAL)
+            csv_writer.writerow(['Path', 'Name', 'Value'])
+            recursive_search(key, csv_writer)
+
+    def extract_registry_file():
+        try:
+            for key_path in key_paths:
+                safe_key_path = key_path.replace('\\', '_')
+                output_file = os.path.join(output_directory, f"{safe_key_path}.reg")
+                if subprocess.run(['reg', 'save', key_path, output_file], check=True).returncode == 0:
+                    extract_files.append(output_file)
+        except subprocess.CalledProcessError as e:
+            print(f"Error exporting registry hive: {e}")
+
+    extract_registry_file()
+    for file in extract_files:
+        export_registry_key_to_csv(file, f"{output_directory}/레지스트리 하이브.csv")
 
 def event_viewer_log_func(output_directory):
-    return 1
+    def parse_tag(element):
+        if element.tag.index('}') > 0:
+            return element[element.tag.index('}')+1:]
+
+    def parse_log(log_file):
+        with Evtx.Evtx(log_file) as log:
+            title_row = [
+                'Provider name',
+                'Provider guid',
+                'EventID',
+                'Version',
+                'Level',
+                'Task',
+                'Opcode',
+                'Keywords',
+                'TimeCreadted',
+                'EventRecordID',
+                'ActivityID',
+                'RelatedActivityID',
+                'ProcessID',
+                'ThreadID',
+                'Channel',
+                'Computer',
+                'Security'
+            ]
+            output_csv_file = f"{output_directory}/이벤트 뷰어 로그.csv"
+            csv_file = csv.writer(open(output_csv_file, 'w', newline=''), dialect=csv.excel, quoting=csv.QUOTE_MINIMAL)
+            csv_file.writerow(title_row)
+
+            for record in log.records():
+                csv_record = []
+                root = ET.fromstring(record.xml())
+                for child in root[0]:
+                    if child.attrib.items():  # attribute가 있는 경우
+                        for key, value in child.attrib.items():
+                            if key == "Qualifiers":
+                                csv_record.append(child.text)
+                            else:
+                                csv_record.append(value)
+                    else:  # attribute가 없는 경우
+                        csv_record.append(child.text)
+                csv_file.writerow(csv_record)
 
 def enviornment_func(output_directory):
     env_vars = os.environ
@@ -372,6 +460,7 @@ def sys_logon_info_func(output_directory):
 
 def regi_service_info_func(output_directory):
     resume = 0
+    # 엑세스 권한 명시
     accessSCM = win32con.GENERIC_READ
     accessSrv = win32service.SC_MANAGER_ALL_ACCESS
 
@@ -394,15 +483,13 @@ def recent_act_info_func(output_directory):
     return 1
 
 def userassist_func(output_directory):
-    key_path = r"Software\Microsoft\Windows\CurrentVersion\Explorer\UserAssist"
-    userassist_list = []
-
-    try:
+    def get_reg_value_userassist(key_path):
+        userassist_list = []
         with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path) as key:
             for i in range(0, winreg.QueryInfoKey(key)[0]):
                 userassist = winreg.EnumKey(key, i)
-                userassist_key_path = f"{key_path}\{userassist}\Count"
-
+                userassist_key_path = f"{key_path}\{userassist}\count"
+                
                 with winreg.OpenKey(winreg.HKEY_CURRENT_USER, userassist_key_path) as userassist_key:
                     for j in range(0, winreg.QueryInfoKey(userassist_key)[1]):
                         userassist_key_name = winreg.EnumValue(userassist_key, j)
@@ -412,16 +499,18 @@ def userassist_func(output_directory):
                         except:
                             userassist_list.append(userassist_key_name[0])
                             continue
+        return userassist_list
 
-        # 결과를 CSV 파일에 쓰기
-        with open(os.path.join(output_directory, 'UserAssist.csv'), 'w', newline="") as f:
+    def csv_writer(files):
+        csv_file_path = f"{output_directory}/UserAssist.csv"
+        with open(csv_file_path, 'w', newline="") as f:
             csv_writer = csv.writer(f)
             csv_writer.writerow(['File Name'])
-            for item in userassist_list:
-                csv_writer.writerow([item])
+            for file_name in files:
+                csv_writer.writerow([file_name])
 
-    except Exception as e:
-        print(f"[-] UserAssist 값 파싱 중 오류 발생: {e}")
+    userassist_list = get_reg_value_userassist(r"Software\Microsoft\Windows\CurrentVersion\Explorer\UserAssist")
+    csv_writer(userassist_list)
 
 def autorun_func(output_directory):
     auto_run_list = [
@@ -444,7 +533,6 @@ def autorun_func(output_directory):
                             csv_writer.writerow([auto_run_info[0], auto_run_info[1], auto_run_info[2]])
                 except Exception as e:
                     print(f"[-] An error occurred: {e}")
-
 
 def registry_func(output_directory):
     return 1
