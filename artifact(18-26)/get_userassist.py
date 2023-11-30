@@ -30,8 +30,6 @@ def GetRegValue_userassist(key_path):
                     except:
                         userassist_list.append(userassist_key_name[0])
                         continue
-    # except:
-    #     print(f"[-] UserAssist 값 파싱 중 오류 발생({e})")
     return userassist_list
 
 def GetUserAssist():
