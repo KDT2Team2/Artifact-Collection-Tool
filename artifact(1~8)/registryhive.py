@@ -1,51 +1,59 @@
-import winreg
+import subprocess
+from Registry import Registry
+import csv
+import os
 
-def get_registry_hive_info(hive):
+output_csv = 'registry_export_'
+key_paths = [
+    'HKEY_CURRENT_USER',
+    r'HKLM\sam',
+    r'HKLM\security',
+    r'HKLM\software',
+    r'HKLM\system',
+    r'HKEY_USERS\.DEFAULT',
+    'HKEY_CURRENT_CONFIG',
+]
+extract_files = []
+
+def recursive_search(key,csv_writer):
+    subkeys = key.subkeys()
+    if len(subkeys) == 0:
+        for v in key.values():
+            try:
+                csv_writer.writerow([key.path(),v.name(),v.value()])
+            except Registry.RegistryParse.UnknownTypeException:
+                pass
+            except UnicodeDecodeError:
+                pass
+    else:
+        for subkey in subkeys:
+            recursive_search(subkey,csv_writer)
+      
+def export_registry_key_to_csv(hive_path,output_csv):
+        reg = Registry.Registry(hive_path)
+        key = reg.root()
+        with open(output_csv, 'w', newline='', encoding='utf-8') as csv_file:
+            csv_writer = csv.writer(csv_file,dialect=csv.excel, quoting=1)
+            csv_writer.writerow(['Path','Name','Value'])
+            recursive_search(key,csv_writer)
+
+def extract_registry_file():
     try:
-        # Open the registry key
-        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, hive) as key:
-            # Get information about the key
-            info = winreg.QueryInfoKey(key)
+        for key_path in key_paths:
+            output_file = key_path.replace('\\','')
+            if subprocess.run(['reg', 'save', key_path, output_file], check=True).returncode == 0:
+                extract_files.append(output_file)
+    except subprocess.CalledProcessError as e:
+        print(f"Error exporting registry hive: {e}")
 
-            # Display information
-            print(f"Registry Hive: {hive}")
-            print(f"Number of Subkeys: {info[0]}")
-            print(f"Number of Values: {info[1]}")
-            print(f"Last Modification Time: {info[2]}")
-            print(f"Title Index: {info[3]}")
-            print(f"Class Index: {info[4]}")
-
-    except FileNotFoundError:
-        print(f"Registry hive {hive} not found.")
-    except PermissionError:
-        print(f"Permission error accessing registry hive {hive}. Make sure to run the script with appropriate permissions.")
-
-# Example usage
-get_registry_hive_info("SOFTWARE\\Microsoft\\Windows\\CurrentVersion")
-
-
-import winreg
-
-def read_registry_hive_file(hive_file_path, hive_name):
-    try:
-        # Load the hive file
-        winreg.LoadHive(None, hive_file_path)
-
-        # Open the registry key
-        with winreg.OpenKey(winreg.HKEY_USERS, hive_name) as key:
-            # Enumerate and display values
-            num_values = winreg.QueryInfoKey(key)[1]
-            for i in range(num_values):
-                name, value, _ = winreg.EnumValue(key, i)
-                print(f"Value Name: {name}, Value Data: {value}")
-
-    except FileNotFoundError:
-        print(f"Registry hive file {hive_file_path} or hive {hive_name} not found.")
-    except PermissionError:
-        print(f"Permission error accessing registry hive file {hive_file_path} or hive {hive_name}. Make sure to run the script with appropriate permissions.")
-    finally:
-        # Unload the hive file
-        winreg.UnloadKey(None, hive_name)
-
-# Example usage
-read_registry_hive_file(r"C:\Windows\System32\config", "MyHive")
+if __name__ == "__main__":
+    extract_registry_file()
+    for key_path in extract_files:
+        export_registry_key_to_csv(key_path,key_path+'.csv')
+            
+    for key_path in extract_files:
+        try:
+            os.remove(key_path)
+            print(f"{key_path} file removed")
+        except Exception as e:
+            print(e)
