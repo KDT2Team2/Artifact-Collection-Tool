@@ -29,7 +29,7 @@ def collect_powershell_logs(server, logtype):
 def powershell_log_extract_start():
     with open('powershell_log.csv', 'w', newline='') as f:
         csv_writer = csv.writer(f)
-        csv_writer.writerow(['Event Category', 'Generated Time', 'Source Name', 'Event ID', 'Event Type'])
+        csv_writer.writerow(['Event Category', 'Generated Time', 'Source Name', 'Event ID', 'Event Type', 'Message'])
         server = ''  # 로컬 컴퓨터
         logtype = 'Windows PowerShell'
         total_events = collect_powershell_logs(server, logtype)
