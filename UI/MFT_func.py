@@ -47,7 +47,6 @@ class WindowsTime:
 
     def get_unix_time(self):
         t = float(self.high) * 2 ** 32 + self.low
-
         return t * 1e-7 - 11644473600
 
 
@@ -63,6 +62,7 @@ def hexdump(chars, sep, width):
 def quotechars(chars):
     return ''.join(['.', c][c.isalnum()] for c in chars)
 
+# bitparse
 def parse_little_endian_signed_positive(buf):
     ret = 0
     for i, b in enumerate(buf):
@@ -89,6 +89,7 @@ def parse_little_endian_signed(buf):
     except Exception:
         return ''
 
+# MftSession
 class MftSession:
     """Class to describe an entire MFT processing session"""
 
@@ -188,6 +189,7 @@ class MftSession:
             print("-f <filename> required.")
             sys.exit()
 
+
         try:
             self.file_mft = open(self.options.filename, 'rb')
         except:
@@ -216,6 +218,7 @@ class MftSession:
                 sys.exit()
 
     def sizecheck(self):
+
         self.mftsize = int(os.path.getsize(self.options.filename)) / 1024
 
         if self.options.debug:
@@ -244,7 +247,6 @@ class MftSession:
 
         self.build_filepaths()
 
-        # reset the file reading
         self.num_records = 0
         self.file_mft.seek(0)
         raw_record = self.file_mft.read(1024)
@@ -311,6 +313,7 @@ class MftSession:
                 print('Building MFT: {0:.0f}'.format(100.0 * self.num_records / self.mftsize) + '%')
 
     def plaso_process_mft_file(self):
+
         self.build_filepaths()
 
         self.num_records = 0
@@ -350,7 +353,6 @@ class MftSession:
             if record['fncnt'] > 1:
                 minirec['par_ref'] = record['fn', 0]['par_ref']
                 for i in (0, record['fncnt'] - 1):
-                    # print record['fn',i]
                     if record['fn', i]['nspace'] == 0x1 or record['fn', i]['nspace'] == 0x3:
                         minirec['name'] = record['fn', i]['name']
                 if minirec.get('name') is None:
@@ -528,7 +530,7 @@ def parse_record(raw_record, options):
             if options.debug:
                 print("Volume name")
 
-        elif atr_record['type'] == 0x70: 
+        elif atr_record['type'] == 0x70:
             if options.debug:
                 print("Volume info attribute")
             volume_info_record = decode_volume_info(raw_record[read_ptr + atr_record['soff']:], options)
@@ -562,7 +564,7 @@ def parse_record(raw_record, options):
             if options.debug:
                 print("Index allocation")
 
-        elif atr_record['type'] == 0xB0: 
+        elif atr_record['type'] == 0xB0:
             record['bitmap'] = True
             if options.debug:
                 print("Bitmap")
@@ -572,17 +574,17 @@ def parse_record(raw_record, options):
             if options.debug:
                 print("Reparse point")
 
-        elif atr_record['type'] == 0xD0: 
+        elif atr_record['type'] == 0xD0:
             record['eainfo'] = True
             if options.debug:
                 print("EA Information")
 
-        elif atr_record['type'] == 0xE0: 
+        elif atr_record['type'] == 0xE0:
             record['ea'] = True
             if options.debug:
                 print("EA")
 
-        elif atr_record['type'] == 0xF0: 
+        elif atr_record['type'] == 0xF0:
             record['propertyset'] = True
             if options.debug:
                 print("Property set")
@@ -786,20 +788,20 @@ def mft_to_body(record, full, std):
 
     if record['fncnt'] > 0:
 
-        if full: 
+        if full:
             name = record['filename']
         else:
             name = record['fn', 0]['name']
 
-        if std:  
+        if std:
             rec_bodyfile = ("%s|%s|%s|%s|%s|%s|%s|%d|%d|%d|%d\n" %
                             ('0', name, '0', '0', '0', '0',
                              int(record['fn', 0]['real_fsize']),
-                             int(record['si']['atime'].unixtime),  # was str ....
+                             int(record['si']['atime'].unixtime),
                              int(record['si']['mtime'].unixtime),
                              int(record['si']['ctime'].unixtime),
                              int(record['si']['ctime'].unixtime)))
-        else: 
+        else:
             rec_bodyfile = ("%s|%s|%s|%s|%s|%s|%s|%d|%d|%d|%d\n" %
                             ('0', name, '0', '0', '0', '0',
                              int(record['fn', 0]['real_fsize']),
@@ -812,7 +814,7 @@ def mft_to_body(record, full, std):
         if 'si' in record:
             rec_bodyfile = ("%s|%s|%s|%s|%s|%s|%s|%d|%d|%d|%d\n" %
                             ('0', 'No FN Record', '0', '0', '0', '0', '0',
-                             int(record['si']['atime'].unixtime),  # was str ....
+                             int(record['si']['atime'].unixtime),
                              int(record['si']['mtime'].unixtime),
                              int(record['si']['ctime'].unixtime),
                              int(record['si']['ctime'].unixtime)))
@@ -904,17 +906,18 @@ def decode_mft_header(record, raw_record):
     record['base_ref'] = struct.unpack("<Lxx", raw_record[32:38])[0]
     record['base_seq'] = struct.unpack("<H", raw_record[38:40])[0]
     record['next_attrid'] = struct.unpack("<H", raw_record[40:42])[0]
-    record['f1'] = raw_record[42:44] 
-    record['recordnum'] = struct.unpack("<I", raw_record[44:48])[0] 
-    record['seq_number'] = raw_record[48:50] 
+    record['f1'] = raw_record[42:44]
+    record['recordnum'] = struct.unpack("<I", raw_record[44:48])[0]
+    record['seq_number'] = raw_record[48:50]
+
     if record['upd_off'] == 42:
         record['seq_attr1'] = raw_record[44:46]
-        record['seq_attr2'] = raw_record[46:58]
+        record['seq_attr2'] = raw_record[46:58] 
     else:
-        record['seq_attr1'] = raw_record[50:52]  
-        record['seq_attr2'] = raw_record[52:54] 
+        record['seq_attr1'] = raw_record[50:52]
+        record['seq_attr2'] = raw_record[52:54]
     record['fncnt'] = 0
-    record['datacnt'] = 0 
+    record['datacnt'] = 0
 
 def decode_mft_magic(record):
     if record['magic'] == 0x454c4946:
@@ -957,17 +960,17 @@ def decode_atr_header(s):
     if d['res'] == 0:
         d['ssize'] = struct.unpack("<L", s[16:20])[0]
         d['soff'] = struct.unpack("<H", s[20:22])[0]
-        d['idxflag'] = struct.unpack("B", s[22:23])[0] 
+        d['idxflag'] = struct.unpack("B", s[22:23])[0]
         _ = struct.unpack("B", s[23:24])[0]
     else:
         d['start_vcn'] = struct.unpack("<Q", s[16:24])[0]
         d['last_vcn'] = struct.unpack("<Q", s[24:32])[0]
-        d['run_off'] = struct.unpack("<H", s[32:34])[0]
-        d['compsize'] = struct.unpack("<H", s[34:36])[0] 
+        d['run_off'] = struct.unpack("<H", s[32:34])[0] 
+        d['compsize'] = struct.unpack("<H", s[34:36])[0]
         _ = struct.unpack("<I", s[36:40])[0]
-        d['allocsize'] = struct.unpack("<Lxxxx", s[40:48])[0] 
-        d['realsize'] = struct.unpack("<Lxxxx", s[48:56])[0] 
-        d['streamsize'] = struct.unpack("<Lxxxx", s[56:64])[0] 
+        d['allocsize'] = struct.unpack("<Lxxxx", s[40:48])[0]
+        d['realsize'] = struct.unpack("<Lxxxx", s[48:56])[0]
+        d['streamsize'] = struct.unpack("<Lxxxx", s[56:64])[0]
         (d['ndataruns'], d['dataruns'], d['drunerror']) = unpack_dataruns(s[64:])
 
     return d
@@ -1119,7 +1122,7 @@ def anomaly_detect(record):
                 record['stf-fn-shift'] = True
         except:
             pass
-
+ 
         try:
             if record['si']['crtime'].dt != 0:
                 if record['si']['crtime'].dt.microsecond == 0:
@@ -1152,12 +1155,8 @@ def extract_mft(image_path, output_file):
         output.write(mft_content)
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        sys.exit(1)
-
-    image_path = sys.argv[1]
-    output_file = sys.argv[2]
-
+    image_path = "\\\\.\\C:"
+    output_file = "$MFT_COPY"
     extract_mft(image_path, output_file)
 
     session = MftSession()
