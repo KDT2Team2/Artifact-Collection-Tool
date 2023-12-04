@@ -28,6 +28,7 @@ import xml.etree.ElementTree as ET
 from Evtx import Evtx
 from Registry import Registry
 import subprocess
+from MFT_func import extract_mft, MftSession
 from browser_history.browsers import Chrome
 from browser_history.browsers import Firefox
 from browser_history.browsers import Brave
@@ -104,14 +105,21 @@ def prefetch_func(output_directory):
 
 def NTFS_func(output_directory):
     image_path = "\\\\.\\C:"
-    script_path = "MFT_func.py"
+    mft_copy_file = os.path.join(output_directory, "$MFT_COPY")
 
     case_number = case_ref_entry.get().replace('/', '_')
     current_date = datetime.now().strftime('%Y-%m-%d')
-    filename = f'NTFS_{case_number}_{current_date}.csv'
-    output_file = os.path.join(output_directory, filename)
+    filename = f'Prefetch_{case_number}_{current_date}.csv'
+    output_csv_file = os.path.join(output_directory, filename)
 
-    subprocess.run(["python", script_path, image_path, output_file], check=True)
+    extract_mft(image_path, mft_copy_file)
+
+    session = MftSession()
+    session.mft_options()
+    session.options.filename = mft_copy_file
+    session.options.output = output_csv_file
+    session.open_files()
+    session.process_mft_file()
 
 def sys_info_func(output_directory):
     try:
@@ -198,51 +206,49 @@ def regi_hive(output_directory):
         export_registry_key_to_csv(file, f"{output_directory}/{filename}")
 
 def event_viewer_log_func(output_directory):
-    def parse_tag(element):
-        if element.tag.index('}') > 0:
-            return element[element.tag.index('}')+1:]
+    log_file = 'C:\\Windows\\System32\\winevt\\Logs\\Security.evtx'
 
-    def parse_log(log_file):
-        with Evtx.Evtx(log_file) as log:
-            title_row = [
-                'Provider name',
-                'Provider guid',
-                'EventID',
-                'Version',
-                'Level',
-                'Task',
-                'Opcode',
-                'Keywords',
-                'TimeCreadted',
-                'EventRecordID',
-                'ActivityID',
-                'RelatedActivityID',
-                'ProcessID',
-                'ThreadID',
-                'Channel',
-                'Computer',
-                'Security'
-            ]
-            case_number = case_ref_entry.get().replace('/', '_')
-            current_date = datetime.now().strftime('%Y-%m-%d')
-            filename = f'이벤트 뷰어 로그_{case_number}_{current_date}.csv'
-            output_csv_file = f"{output_directory}/{filename}.csv"
-            csv_file = csv.writer(open(output_csv_file, 'w', newline=''), dialect=csv.excel, quoting=csv.QUOTE_MINIMAL)
-            csv_file.writerow(title_row)
+    case_number = case_ref_entry.get().replace('/', '_')
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    filename = f'이벤트 뷰어 로그_{case_number}_{current_date}.csv'
+    output_csv_file = os.path.join(output_directory, filename)
 
-            for record in log.records():
-                csv_record = []
-                root = ET.fromstring(record.xml())
-                for child in root[0]:
-                    if child.attrib.items():  # attribute가 있는 경우
-                        for key, value in child.attrib.items():
-                            if key == "Qualifiers":
-                                csv_record.append(child.text)
-                            else:
-                                csv_record.append(value)
-                    else:  # attribute가 없는 경우
-                        csv_record.append(child.text)
-                csv_file.writerow(csv_record)
+    with Evtx.Evtx(log_file) as log:
+        title_row = [
+            'Provider name',
+            'Provider guid',
+            'EventID',
+            'Version',
+            'Level',
+            'Task',
+            'Opcode',
+            'Keywords',
+            'TimeCreadted',
+            'EventRecordID',
+            'ActivityID',
+            'RelatedActivityID',
+            'ProcessID',
+            'ThreadID',
+            'Channel',
+            'Computer',
+            'Security'
+        ]
+        csv_file = csv.writer(open(output_csv_file, 'w', newline='', encoding='utf-8-sig'), dialect=csv.excel, quoting=1)
+        csv_file.writerow(title_row)
+
+        for record in log.records():
+            csv_record = []
+            root = ET.fromstring(record.xml())
+            for child in root[0]:
+                if child.attrib.items():
+                    for key, value in child.attrib.items():
+                        if key == "Qualifiers":
+                            csv_record.append(child.text)
+                        else:
+                            csv_record.append(value)
+                else: 
+                    csv_record.append(child.text)
+            csv_file.writerow(csv_record)
 
 def srum_host_service_func(output_directory):
     if not os.path.exists(output_directory):
@@ -256,7 +262,6 @@ def srum_host_service_func(output_directory):
     with open(output_file, 'w', newline="", encoding='utf-8') as file:
         writer = csv.writer(file, dialect=csv.excel, quoting=csv.QUOTE_MINIMAL)
         
-        # SRUM Data Collection
         try:
             srudb_path = r'C:\Windows\System32\sru\SRUDB.DAT'
             registry_path = r'C:\Windows\System32\config\SOFTWARE'
@@ -270,7 +275,6 @@ def srum_host_service_func(output_directory):
         except Exception as e:
             print(f"Error in SRUM data collection: {e}")
 
-        # Host Information Collection
         try:
             host_info = psutil.net_if_addrs()
             family_dict = {2: 'AF_INET', 23: 'AF_INET6', -1: 'AF_LINK'}
@@ -280,7 +284,6 @@ def srum_host_service_func(output_directory):
         except Exception as e:
             print(f"Error retrieving host information: {e}")
 
-        # Service Information Collection
         try:
             services_info = psutil.win_service_iter()
             for service in services_info:
