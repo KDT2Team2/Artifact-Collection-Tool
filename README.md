@@ -11,3 +11,6 @@
     * 기능(3명) - 승헌, 병열, 서연
 
 ![artifacts](https://github.com/KDT2Team2/Artifact-Collection-Tool/assets/98378185/2f9fcc52-264c-4940-be0e-4a61b2443f48)
+
+결과물 다운로드
+https://drive.google.com/file/d/1sRrzUAxA2bVAPbwYKVx-bE-D7CJPSLEw/view?usp=sharing
