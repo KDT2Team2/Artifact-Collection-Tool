@@ -244,6 +244,50 @@ def event_viewer_log_func(output_directory):
                         csv_record.append(child.text)
                 csv_file.writerow(csv_record)
 
+def srum_host_service_func(output_directory):
+    if not os.path.exists(output_directory):
+        os.makedirs(output_directory)
+
+    case_number = case_ref_entry.get().replace('/', '_')
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    filename = f'SRUM_HOST_Service_{case_number}_{current_date}.csv'
+    output_file = os.path.join(output_directory, filename)
+    
+    with open(output_file, 'w', newline="", encoding='utf-8') as file:
+        writer = csv.writer(file, dialect=csv.excel, quoting=csv.QUOTE_MINIMAL)
+        
+        # SRUM Data Collection
+        try:
+            srudb_path = r'C:\Windows\System32\sru\SRUDB.DAT'
+            registry_path = r'C:\Windows\System32\config\SOFTWARE'
+            cmd = f'srum_dump.exe -i {srudb_path} -r {registry_path} -o temp_srum_report.xls'
+            subprocess.run(args=cmd, text=True, stdout=subprocess.DEVNULL)
+            if os.path.exists('temp_srum_report.xls'):
+                xlsx = pd.read_excel('temp_srum_report.xls')
+                for index, row in xlsx.iterrows():
+                    writer.writerow(row)
+                os.remove('temp_srum_report.xls')
+        except Exception as e:
+            print(f"Error in SRUM data collection: {e}")
+
+        # Host Information Collection
+        try:
+            host_info = psutil.net_if_addrs()
+            family_dict = {2: 'AF_INET', 23: 'AF_INET6', -1: 'AF_LINK'}
+            for interface, addresses in host_info.items():
+                for address in addresses:
+                    writer.writerow([interface, family_dict.get(address.family, 'Unknown'), address.address, address.netmask, address.broadcast])
+        except Exception as e:
+            print(f"Error retrieving host information: {e}")
+
+        # Service Information Collection
+        try:
+            services_info = psutil.win_service_iter()
+            for service in services_info:
+                writer.writerow([service.name(), service.display_name(), service.status()])
+        except Exception as e:
+            print(f"Error retrieving services information: {e}")
+
 def enviornment_func(output_directory):
     env_vars = os.environ
     
@@ -777,6 +821,7 @@ artifact_functions = {
     "시스템 정보" : sys_info_func,
     "레지스트리 하이브" : regi_hive,
     "이벤트 뷰어 로그" : event_viewer_log_func,
+    "SRUM, Hosts 및 서비스" : srum_host_service_func,
     "환경 변수" : enviornment_func,
     "패치 리스트" : patch_list_func,
     "실행 프로세스 목록 정보" : process_list_info_func,
