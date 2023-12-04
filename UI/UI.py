@@ -75,7 +75,11 @@ def memory_dump_func(output_directory):
     return 1
 
 def prefetch_func(output_directory):
-    with open(os.path.join(output_directory, 'Prefetch.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+    case_number = case_ref_entry.get().replace('/', '_')
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    filename = f'Prefetch_{case_number}_{current_date}.csv'
+
+    with open(os.path.join(output_directory, filename), 'w', newline='', encoding='utf-8-sig') as file:
         csv_writer = csv.writer(file)
 
         # Write the header line
@@ -101,13 +105,20 @@ def prefetch_func(output_directory):
 def NTFS_func(output_directory):
     image_path = "\\\\.\\C:"
     script_path = "MFT_func.py"
-    output_file = os.path.join(output_directory, "NTFS 아티팩트.csv")
+
+    case_number = case_ref_entry.get().replace('/', '_')
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    filename = f'NTFS_{case_number}_{current_date}.csv'
+    output_file = os.path.join(output_directory, filename)
 
     subprocess.run(["python", script_path, image_path, output_file], check=True)
 
 def sys_info_func(output_directory):
     try:
-        with open(os.path.join(output_directory, '시스템 정보.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+        case_number = case_ref_entry.get().replace('/', '_')
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        filename = f'시스템 정보_{case_number}_{current_date}.csv'
+        with open(os.path.join(output_directory, filename), 'w', newline='', encoding='utf-8-sig') as file:
             csv_writer = csv.writer(file)
             headers = ['Type', 'Information']
             csv_writer.writerow(headers)
@@ -181,7 +192,10 @@ def regi_hive(output_directory):
 
     extract_registry_file()
     for file in extract_files:
-        export_registry_key_to_csv(file, f"{output_directory}/레지스트리 하이브.csv")
+        case_number = case_ref_entry.get().replace('/', '_')
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        filename = f'레지스트리 하이브_{case_number}_{current_date}.csv'
+        export_registry_key_to_csv(file, f"{output_directory}/{filename}")
 
 def event_viewer_log_func(output_directory):
     def parse_tag(element):
@@ -209,7 +223,10 @@ def event_viewer_log_func(output_directory):
                 'Computer',
                 'Security'
             ]
-            output_csv_file = f"{output_directory}/이벤트 뷰어 로그.csv"
+            case_number = case_ref_entry.get().replace('/', '_')
+            current_date = datetime.now().strftime('%Y-%m-%d')
+            filename = f'이벤트 뷰어 로그_{case_number}_{current_date}.csv'
+            output_csv_file = f"{output_directory}/{filename}.csv"
             csv_file = csv.writer(open(output_csv_file, 'w', newline=''), dialect=csv.excel, quoting=csv.QUOTE_MINIMAL)
             csv_file.writerow(title_row)
 
@@ -230,7 +247,10 @@ def event_viewer_log_func(output_directory):
 def enviornment_func(output_directory):
     env_vars = os.environ
     
-    with open(os.path.join(output_directory, '환경변수.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+    case_number = case_ref_entry.get().replace('/', '_')
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    filename = f'환경변수_{case_number}_{current_date}.csv'
+    with open(os.path.join(output_directory, filename), 'w', newline='', encoding='utf-8-sig') as file:
         csv_writer = csv.writer(file, dialect=csv.excel, quoting=csv.QUOTE_ALL)
         
         csv_writer.writerow(['Key', 'Value'])
@@ -245,7 +265,10 @@ def patch_list_func(output_directory):
     history_count = update_searcher.GetTotalHistoryCount()
     updates = update_searcher.QueryHistory(0, history_count)
 
-    with open(os.path.join(output_directory, '패치 리스트.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+    case_number = case_ref_entry.get().replace('/', '_')
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    filename = f'패치 리스트_{case_number}_{current_date}.csv'
+    with open(os.path.join(output_directory, filename), 'w', newline='', encoding='utf-8-sig') as file:
         writer = csv.writer(file)
         writer.writerow(['Title', 'Update ID', 'Version', 'Date'])
 
@@ -266,7 +289,10 @@ def patch_list_func(output_directory):
             writer.writerow([title_only, kb_number, version, str(update.Date)])
 
 def process_list_info_func(output_directory):
-    with open(os.path.join(output_directory, '실행 프로세스 목록 정보.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+    case_number = case_ref_entry.get().replace('/', '_')
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    filename = f'실행 프로세스 목록 정보_{case_number}_{current_date}.csv'
+    with open(os.path.join(output_directory, filename), 'w', newline='', encoding='utf-8-sig') as file:
         writer = csv.writer(file)
         writer.writerow(['Process ID', 'Process name', 'Process path', 'Process creat time', 'Process access time', 'Process modify time', 'Process size', 'hash value(sha-256)'])
 
@@ -312,7 +338,10 @@ def process_list_info_func(output_directory):
 def connection_info_func(output_directory):
     host_name = socket.gethostname()
 
-    with open(os.path.join(output_directory, '연결 정보 (열려진 포트).csv'), 'w', newline='', encoding='utf-8-sig') as file:
+    case_number = case_ref_entry.get().replace('/', '_')
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    filename = f'연결 정보 (열려진 포트)_{case_number}_{current_date}.csv'
+    with open(os.path.join(output_directory, filename), 'w', newline='', encoding='utf-8-sig') as file:
         writer = csv.writer(file)
         writer.writerow(['Port Number'])
 
@@ -326,7 +355,10 @@ def connection_info_func(output_directory):
                 writer.writerow([sent[TCP].dport])
 
 def ip_setting_info_func(output_directory):
-    with open(os.path.join(output_directory, 'IP 설정 정보.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+    case_number = case_ref_entry.get().replace('/', '_')
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    filename = f'IP 설정 정보_{case_number}_{current_date}.csv'
+    with open(os.path.join(output_directory, filename), 'w', newline='', encoding='utf-8-sig') as file:
         writer = csv.writer(file)
         writer.writerow(['Interface', 'IP Address', 'Netmask', 'Broadcast Address'])
         
@@ -347,7 +379,10 @@ def ip_setting_info_func(output_directory):
 def ARP_info_func(output_directory):
     arp_table = os.popen('arp -a').read()
 
-    with open(os.path.join(output_directory, 'ARP 정보.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+    case_number = case_ref_entry.get().replace('/', '_')
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    filename = f'ARP 정보_{case_number}_{current_date}.csv'
+    with open(os.path.join(output_directory, filename), 'w', newline='', encoding='utf-8-sig') as file:
         writer = csv.writer(file)
         writer.writerow(['IP Address', 'Physical Address', 'Type'])
 
@@ -360,7 +395,10 @@ def ARP_info_func(output_directory):
                     writer.writerow([parts[0], parts[1], type_value])
 
 def NetBIOS_info_func(output_directory):
-    with open(os.path.join(output_directory, 'NetBIOS 정보.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+    case_number = case_ref_entry.get().replace('/', '_')
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    filename = f'NetBIOS 정보_{case_number}_{current_date}.csv'
+    with open(os.path.join(output_directory, filename), 'w', newline='', encoding='utf-8-sig') as file:
         writer = csv.writer(file)
         writer.writerow(['Network Name', 'IP Address', 'NetBIOS name', 'NetBIOS type', 'NetBIOS status'])
 
@@ -397,7 +435,10 @@ def open_handle_info_func(output_directory):
     result = []
     win32gui.EnumWindows(callback, result)
 
-    with open(os.path.join(output_directory, '열려있는 핸들 정보.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+    case_number = case_ref_entry.get().replace('/', '_')
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    filename = f'열려있는 핸들 정보_{case_number}_{current_date}.csv'
+    with open(os.path.join(output_directory, filename), 'w', newline='', encoding='utf-8-sig') as file:
         writer = csv.writer(file)
         writer.writerow(['Window Number', 'Window Title', 'Window Class', 'Visible'])
 
@@ -410,7 +451,10 @@ def open_handle_info_func(output_directory):
             ])
 
 def work_schedule_info_func(output_directory):
-    with open(os.path.join(output_directory, '작업 스케쥴 정보.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+    case_number = case_ref_entry.get().replace('/', '_')
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    filename = f'작업 스케줄 정보_{case_number}_{current_date}.csv'
+    with open(os.path.join(output_directory, filename), 'w', newline='', encoding='utf-8-sig') as file:
         writer = csv.writer(file)
         writer.writerow(["Task name", "Last run Time", "Next run Time", "Enabled", "Trigger Count", "Action Count"])
 
@@ -435,7 +479,10 @@ def sys_logon_info_func(output_directory):
     log_type = ['Application', 'System', 'Security', 'Setup', 'Forwarded Events']
     query = 'logon'
 
-    with open(os.path.join(output_directory, '시스템 로그온 정보.csv'), 'w', newline='', encoding='utf-8-sig') as file:
+    case_number = case_ref_entry.get().replace('/', '_')
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    filename = f'시스템 로그온 정보_{case_number}_{current_date}.csv'
+    with open(os.path.join(output_directory, filename), 'w', newline='', encoding='utf-8-sig') as file:
         writer = csv.writer(file)
         writer.writerow(['Log Type', 'Event ID', 'Source', 'Time Generated', 'Time Written', 'Event Category', 'Event Type'])
 
@@ -460,7 +507,6 @@ def sys_logon_info_func(output_directory):
 
 def regi_service_info_func(output_directory):
     resume = 0
-    # 엑세스 권한 명시
     accessSCM = win32con.GENERIC_READ
     accessSrv = win32service.SC_MANAGER_ALL_ACCESS
 
@@ -471,7 +517,10 @@ def regi_service_info_func(output_directory):
 
     statuses = win32service.EnumServicesStatus(hscm, typeFilter, stateFilter)
 
-    output_path = os.path.join(output_directory, '등록된 서비스 정보.csv')
+    case_number = case_ref_entry.get().replace('/', '_')
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    filename = f'등록된 서비스 정보_{case_number}_{current_date}.csv'
+    output_path = os.path.join(output_directory, filename)
     with open(output_path, 'w', newline='', encoding='utf-8') as f:
         csv_writer = csv.writer(f)
         csv_writer.writerow(['Short Name', 'Description', 'Status'])
@@ -502,7 +551,10 @@ def userassist_func(output_directory):
         return userassist_list
 
     def csv_writer(files):
-        csv_file_path = f"{output_directory}/UserAssist.csv"
+        case_number = case_ref_entry.get().replace('/', '_')
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        filename = f'UserAssist_{case_number}_{current_date}.csv'
+        csv_file_path = f"{output_directory}/{filename}.csv"
         with open(csv_file_path, 'w', newline="") as f:
             csv_writer = csv.writer(f)
             csv_writer.writerow(['File Name'])
@@ -518,12 +570,13 @@ def autorun_func(output_directory):
         'Software\Microsoft\Windows\CurrentVersion\RunOnce'
     ]
 
-    # CSV 파일 생성
-    with open(os.path.join(output_directory, 'AutoRun.csv'), 'w', newline="") as f:
+    case_number = case_ref_entry.get().replace('/', '_')
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    filename = f'AutoRun_{case_number}_{current_date}.csv'
+    with open(os.path.join(output_directory, filename), 'w', newline="") as f:
         csv_writer = csv.writer(f)
         csv_writer.writerow(['Process Name', 'Process Path', 'Status'])
 
-        # 레지스트리 키를 열고 정보 추출
         for key_path in auto_run_list:
             for hkey in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
                 try:
@@ -541,7 +594,10 @@ def browser_info_func(output_directory):
     browsers = ['Chrome', 'Firefox', 'Brave', 'Chromium', 'Edge', 'LibreWolf', 'Opera', 'OperaGX', 'Safari', 'Vivaldi']
 
     try:
-        with open(os.path.join(output_directory, '브라우저 기록.csv'), 'w', newline='', encoding='utf-8') as f:
+        case_number = case_ref_entry.get().replace('/', '_')
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        filename = f'브라우저 기록_{case_number}_{current_date}.csv'
+        with open(os.path.join(output_directory, filename), 'w', newline='', encoding='utf-8') as f:
             csv_writer = csv.writer(f)
             csv_writer.writerow(['Time Stamp', 'Browser', 'URL Link', 'Explain'])
 
@@ -623,8 +679,6 @@ def bin_func(output_directory):
         except Exception as e:
             print(f"다른 오류 발생 : {e}")
             return None
-
-    # 사용자 이름 가져오기
     user_name = getpass.getuser()
     join_user_name = f"C:\\Users\\{user_name}"
     recycle_path = 'C:\\$Recycle.Bin\\'
@@ -633,7 +687,10 @@ def bin_func(output_directory):
 
     if os.path.exists(personal_recycle_path):
         recycle_files = os.listdir(personal_recycle_path)
-        with open(os.path.join(output_directory, '휴지통.csv'), 'w', newline="") as f:
+        case_number = case_ref_entry.get().replace('/', '_')
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        filename = f'휴지통_{case_number}_{current_date}.csv'
+        with open(os.path.join(output_directory, filename), 'w', newline="") as f:
             csv_writer = csv.writer(f)
             csv_writer.writerow(['Deleted FilePath', 'Creation Time', 'Access Time', 'Modified Time', 'File Size'])
 
@@ -655,7 +712,10 @@ def powershell_log_func(output_directory):
     total = 0
 
     try:
-        with open(os.path.join(output_directory, '파워쉘 로그.csv'), 'w', newline='') as f:
+        case_number = case_ref_entry.get().replace('/', '_')
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        filename = f'파워쉘 로그_{case_number}_{current_date}.csv'
+        with open(os.path.join(output_directory, filename), 'w', newline='') as f:
             csv_writer = csv.writer(f)
             csv_writer.writerow(['Event Category', 'Generated Time', 'Source Name', 'Event ID', 'Event Type', 'Message'])
 
@@ -698,7 +758,10 @@ def lnk_files_func(output_directory):
             'ModifiedTime': modifiedtime_list,
             'Accesstime': accesstime_list
         })
-        output_file = os.path.join(output_directory, 'LNK 파일.csv')
+        case_number = case_ref_entry.get().replace('/', '_')
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        filename = f'LNK 파일_{case_number}_{current_date}.csv'
+        output_file = os.path.join(output_directory, filename)
         df.to_csv(output_file)
     else:
         print("[-] Lnk 파일 경로가 올바르지 않음")
@@ -963,7 +1026,6 @@ options_frame.grid(row=2, column=0, columnspan=3, padx=10, pady=5, sticky='ew')
 checkbuttons = {}
 variables = {}
 options = [
-    "메모리 덤프",
     "Prefetch", 
     "NTFS 아티팩트", 
     "시스템 정보",
@@ -981,10 +1043,8 @@ options = [
     "작업 스케줄 정보",
     "시스템 로그온 정보",
     "등록된 서비스 정보",
-    "최근 활동 정보",
     "UserAssist",
     "AutoRun",
-    "레지스트리",
     "브라우저 기록",
     "휴지통",
     "파워쉘 로그",
