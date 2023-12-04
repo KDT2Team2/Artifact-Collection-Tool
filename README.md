@@ -13,4 +13,4 @@
 ![artifacts](https://github.com/KDT2Team2/Artifact-Collection-Tool/assets/98378185/2f9fcc52-264c-4940-be0e-4a61b2443f48)
 
 결과물 다운로드
-https://drive.google.com/file/d/1stbvpfwgF6yq6EtGtz-8SbvIaz3JhfFA/view?usp=sharing
+https://drive.google.com/file/d/1-yDbWH-itTcwRP-dFaEp2J01lMisU-oc/view?usp=sharing
