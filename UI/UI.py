@@ -105,18 +105,16 @@ def prefetch_func(output_directory):
 
 def NTFS_func(output_directory):
     image_path = "\\\\.\\C:"
-    mft_copy_file = os.path.join(output_directory, "$MFT_COPY")
+    output_file = "$MFT_COPY"
+    extract_mft(image_path, output_file)
 
     case_number = case_ref_entry.get().replace('/', '_')
     current_date = datetime.now().strftime('%Y-%m-%d')
-    filename = f'Prefetch_{case_number}_{current_date}.csv'
+    filename = f'MFT_{case_number}_{current_date}.csv'
     output_csv_file = os.path.join(output_directory, filename)
-
-    extract_mft(image_path, mft_copy_file)
 
     session = MftSession()
     session.mft_options()
-    session.options.filename = mft_copy_file
     session.options.output = output_csv_file
     session.open_files()
     session.process_mft_file()
@@ -1056,7 +1054,8 @@ style = ttk.Style()
 style.map("Treeview", 
           background=[("selected", "SystemWindow")],
           foreground=[("selected", "SystemWindowText")])
-style.theme_use('clam')
+# style.theme_use('clam')
+
 
 # 사례 참조 섹션
 case_ref_label = ttk.Label(app, text="케이스 번호 / 참조:", background='#f0f0f0')
