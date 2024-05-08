@@ -12,7 +12,9 @@
    - UI(1명) - 대호
    - 기능(3명) - 승헌, 병열, 서연
 
-![artifacts](https://github.com/KDT2Team2/Artifact-Collection-Tool/assets/98378185/2f9fcc52-264c-4940-be0e-4a61b2443f48)
+### 수집 가능 Artifact ###
+![수집아티팩트목록](https://github.com/KDT2Team2/Artifact-Collection-Tool/assets/98378185/8c24ed71-3d25-417b-8a0d-1abb15880ad1)
+
 
 결과물 다운로드
 https://drive.google.com/file/d/1NjqOMB9WTus6Om0WK08850V9QUdEE2yV/view?usp=sharing
